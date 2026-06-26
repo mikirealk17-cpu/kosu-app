@@ -1,16 +1,20 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { supabase } from './supabaseClient.js'
 
-const SUPABASE_URL = 'https://hiibhvtlnwihfiufzuph.supabase.co'
-const SUPABASE_KEY = 'sb_publishable_Q8mZdRrn14hFacdUPrNTaw_DyqmSVXv'
+let workerFeatureEnabled = false
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+// 今日の日付をセットします。toISOString()はUTC基準なので、日本時間では日付がずれることがあります。
+document.getElementById('work_date').value = formatDate(new Date())
 
-// 今日の日付をセット
-document.getElementById('work_date').value = new Date().toISOString().split('T')[0]
+function formatDate(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 // 作業内容を読み込む
 async function loadWorkTypes() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('work_type_master')
     .select('*')
     .eq('is_active', true)
@@ -18,6 +22,13 @@ async function loadWorkTypes() {
 
   const select = document.getElementById('work_type')
   select.innerHTML = ''
+
+  if (error || !data) {
+    console.error('作業内容の取得に失敗しました', error)
+    showMessage('❌ 作業内容を読み込めませんでした', 'error')
+    return
+  }
+
   data.forEach(type => {
     const option = document.createElement('option')
     option.value = type.id
@@ -29,26 +40,37 @@ async function loadWorkTypes() {
 // 製番で設備名を検索
 async function searchSeiban() {
   const seiban = document.getElementById('seiban').value.trim()
-  if (seiban.length < 1) return
+  const equipmentInput = document.getElementById('equipment_name')
+  const statusEl = document.getElementById('seiban_status')
 
-  const { data } = await supabase
+  if (seiban.length < 1) {
+    equipmentInput.value = ''
+    equipmentInput.readOnly = false
+    statusEl.textContent = ''
+    return
+  }
+
+  const { data, error } = await supabase
     .from('seiban_master')
     .select('*')
     .eq('seiban', seiban)
-    .single()
-
-  const equipmentInput = document.getElementById('equipment_name')
-  const statusEl = document.getElementById('seiban_status')
+    .maybeSingle()
 
   if (data) {
     equipmentInput.value = data.equipment_name
     equipmentInput.readOnly = true
-    statusEl.textContent = '✅ 登録済み'
+    statusEl.textContent = '登録済み'
     statusEl.style.color = 'green'
+  } else if (error) {
+    console.error('製番の確認に失敗しました', error)
+    equipmentInput.value = ''
+    equipmentInput.readOnly = false
+    statusEl.textContent = '製番の確認に失敗しました'
+    statusEl.style.color = '#e74c3c'
   } else {
     equipmentInput.value = ''
     equipmentInput.readOnly = false
-    statusEl.textContent = '⚠️ 未登録の製番です。設備名を入力してください'
+    statusEl.textContent = '未登録の製番です。設備名を入力してください'
     statusEl.style.color = '#e74c3c'
   }
 
@@ -85,6 +107,7 @@ function timeToMinutes(time) {
 
 // 保存する
 async function saveLog() {
+  const workerId = document.getElementById('worker').value
   const seiban = document.getElementById('seiban').value.trim()
   const equipmentName = document.getElementById('equipment_name').value.trim()
   const workTypeId = document.getElementById('work_type').value
@@ -95,48 +118,79 @@ async function saveLog() {
   const break2 = parseInt(document.getElementById('break2').value) || 0
   const note = document.getElementById('note').value.trim()
 
-  if (!seiban || !equipmentName || !workDate || !startTime || !endTime) {
+  if (!seiban || !equipmentName || !workTypeId || !workDate || !startTime || !endTime) {
+    showMessage('⚠️ 必須項目を入力してください', 'error')
+    return
+  }
+
+  if (workerFeatureEnabled && !workerId) {
     showMessage('⚠️ 必須項目を入力してください', 'error')
     return
   }
 
   const actualMinutes = timeToMinutes(endTime) - timeToMinutes(startTime) - break1 - break2
 
+  if (actualMinutes <= 0) {
+    showMessage('⚠️ 開始・終了・休憩時間を確認してください', 'error')
+    return
+  }
+
   // 製番が未登録なら登録する
   let seibanId
-  const { data: existing } = await supabase
+  const { data: existing, error: findSeibanError } = await supabase
     .from('seiban_master')
     .select('id')
     .eq('seiban', seiban)
-    .single()
+    .maybeSingle()
+
+  if (findSeibanError) {
+    console.error('製番の確認に失敗しました', findSeibanError)
+    showMessage('❌ 製番の確認に失敗しました', 'error')
+    return
+  }
 
   if (existing) {
     seibanId = existing.id
   } else {
-    const { data: newSeiban } = await supabase
+    const { data: newSeiban, error: insertSeibanError } = await supabase
       .from('seiban_master')
       .insert({ seiban, equipment_name: equipmentName })
       .select()
       .single()
+
+    if (insertSeibanError || !newSeiban) {
+      console.error('製番の登録に失敗しました', insertSeibanError)
+      showMessage('❌ 製番の登録に失敗しました', 'error')
+      return
+    }
+
     seibanId = newSeiban.id
   }
 
   // 工数を保存
+  const logData = {
+    work_date: workDate,
+    seiban_id: seibanId,
+    work_type_id: workTypeId,
+    start_time: startTime,
+    end_time: endTime,
+    break1_minutes: break1,
+    break2_minutes: break2,
+    actual_minutes: actualMinutes,
+    note
+  }
+
+  // DB側にworker_id列がある場合だけ作業者IDを保存します。
+  if (workerFeatureEnabled) {
+    logData.worker_id = workerId
+  }
+
   const { error } = await supabase
     .from('work_logs')
-    .insert({
-      work_date: workDate,
-      seiban_id: seibanId,
-      work_type_id: workTypeId,
-      start_time: startTime,
-      end_time: endTime,
-      break1_minutes: break1,
-      break2_minutes: break2,
-      actual_minutes: actualMinutes,
-      note
-    })
+    .insert(logData)
 
   if (error) {
+    console.error('工数の保存に失敗しました', error)
     showMessage('❌ 保存に失敗しました', 'error')
   } else {
     showMessage('✅ 保存しました！', 'success')
@@ -160,4 +214,40 @@ document.getElementById('break2').addEventListener('input', calcActualTime)
 window.searchSeiban = searchSeiban
 window.saveLog = saveLog
 
+async function loadWorkers() {
+  const { data, error } = await supabase
+    .from('worker_master')
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order')
+
+  const select = document.getElementById('worker')
+  select.innerHTML = ''
+
+  const emptyOption = document.createElement('option')
+  emptyOption.value = ''
+  emptyOption.textContent = '作業者を選択'
+  select.appendChild(emptyOption)
+
+  if (error || !data) {
+    console.error('作業者一覧の取得に失敗しました', error)
+    workerFeatureEnabled = false
+    select.disabled = true
+    emptyOption.textContent = '作業者DB未設定'
+    showMessage('⚠️ 作業者DBが未設定のため、作業者なしで保存します', 'error')
+    return
+  }
+
+  workerFeatureEnabled = true
+  select.disabled = false
+
+  data.forEach(worker => {
+    const option = document.createElement('option')
+    option.value = worker.id
+    option.textContent = worker.name
+    select.appendChild(option)
+  })
+}
+
 loadWorkTypes()
+loadWorkers()

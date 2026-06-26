@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作業者管理</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .back-btn {
+      display: block;
+      text-align: center;
+      padding: 12px;
+      background: #6c757d;
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .worker-list {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .worker-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .worker-item:last-child {
+      border-bottom: none;
+    }
+    .worker-name {
+      font-size: 16px;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .worker-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: auto;
+      padding: 6px 12px;
+      font-size: 13px;
+      border-radius: 6px;
+      margin-top: 0;
+    }
+    .edit-btn {
+      background: #ffc107;
+      color: #333;
+    }
+    .delete-btn {
+      background: #dc3545;
+    }
+    .add-form {
+      display: flex;
+      gap: 8px;
+    }
+    .add-form input {
+      flex: 1;
+      min-width: 0;
+    }
+    .add-form button {
+      width: auto;
+      padding: 12px 20px;
+      margin-top: 0;
+    }
+    @media (max-width: 480px) {
+      .worker-item {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .worker-actions {
+        width: 100%;
+      }
+      .icon-btn {
+        flex: 1;
+        min-height: 44px;
+      }
+      .add-form {
+        flex-direction: column;
+      }
+      .add-form button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>作業者管理</h1>
+
+    <nav class="page-links" aria-label="画面移動">
+      <a href="index.html">工数入力</a>
+      <a href="summary.html">集計画面</a>
+    </nav>
+
+    <div class="worker-list" id="worker_list"></div>
+
+    <div class="form-group">
+      <label>新しい作業者を追加</label>
+      <div class="add-form">
+        <input type="text" id="new_worker_name" placeholder="名前を入力">
+        <button onclick="addWorker()">追加</button>
+      </div>
+    </div>
+
+    <div id="message"></div>
+  </div>
+
+  <script src="workers.js" type="module"></script>
+</body>
+</html>

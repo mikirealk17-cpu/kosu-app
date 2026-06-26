@@ -7,12 +7,13 @@
   <link rel="stylesheet" href="style.css">
   <style>
     .tab-buttons {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
       margin-bottom: 20px;
     }
     .tab-btn {
-      flex: 1;
+      width: 100%;
       padding: 10px;
       border: 2px solid #2c7be5;
       background: white;
@@ -21,19 +22,22 @@
       font-size: 15px;
       font-weight: bold;
       cursor: pointer;
+      margin-top: 0;
+      white-space: nowrap;
     }
     .tab-btn.active {
       background: #2c7be5;
       color: white;
     }
     .period-select {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
       gap: 8px;
       align-items: center;
       margin-bottom: 20px;
     }
     .period-select input {
-      flex: 1;
+      min-width: 0;
     }
     table {
       width: 100%;
@@ -41,6 +45,7 @@
       background: white;
       border-radius: 8px;
       overflow: hidden;
+      table-layout: fixed;
     }
     th {
       background: #2c7be5;
@@ -53,6 +58,7 @@
       padding: 12px;
       border-bottom: 1px solid #eee;
       font-size: 15px;
+      overflow-wrap: anywhere;
     }
     tr:last-child td {
       border-bottom: none;
@@ -73,18 +79,50 @@
       margin-bottom: 20px;
       font-weight: bold;
     }
+    #summary_table {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    @media (max-width: 480px) {
+      .tab-buttons {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .tab-btn {
+        font-size: 14px;
+        padding: 10px 6px;
+      }
+      .period-select {
+        grid-template-columns: 1fr;
+      }
+      .period-select span {
+        display: none;
+      }
+      .period-select button {
+        width: 100% !important;
+        margin-top: 0;
+      }
+      th,
+      td {
+        padding: 10px 8px;
+        font-size: 13px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>📊 工数集計</h1>
+    <h1>工数集計</h1>
 
-    <a href="index.html" class="back-btn">← 工数入力に戻る</a>
+    <nav class="page-links" aria-label="画面移動">
+      <a href="index.html">工数入力</a>
+      <a href="workers.html">作業者管理</a>
+    </nav>
 
     <div class="tab-buttons">
       <button class="tab-btn active" onclick="switchTab('seiban')">製番別</button>
       <button class="tab-btn" onclick="switchTab('equipment')">設備別</button>
       <button class="tab-btn" onclick="switchTab('daily')">日別</button>
+      <button class="tab-btn" onclick="switchTab('worker')">作業者別</button>
     </div>
 
     <div class="period-select">

@@ -9,13 +9,22 @@
 <body>
 
   <div class="container">
-    <h1>⚙️ 工数入力</h1>
+    <h1>工数入力</h1>
+
+    <nav class="page-links" aria-label="画面移動">
+      <a href="summary.html">集計画面</a>
+      <a href="workers.html">作業者管理</a>
+    </nav>
 
     <div class="form-group">
       <label>日付</label>
       <input type="date" id="work_date">
     </div>
 
+    <div class="form-group">
+      <label>作業者</label>
+      <select id="worker"></select>
+    </div>
     <div class="form-group">
       <label>製番</label>
       <input type="text" id="seiban" placeholder="例: A001" oninput="searchSeiban()">
@@ -62,7 +71,7 @@
       <textarea id="note" rows="3" placeholder="任意"></textarea>
     </div>
 
-    <button onclick="saveLog()"><a href="summary.html" style="display:block; text-align:center; padding:14px; background:#28a745; color:white; border-radius:8px; text-decoration:none; font-size:18px; font-weight:bold; margin-bottom:8px;">📊 集計画面へ</a>💾 保存する</button>
+    <button onclick="saveLog()">保存する</button>
     <div id="message"></div>
   </div>
 
