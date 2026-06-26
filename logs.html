@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>入力履歴編集</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>入力履歴編集</h1>
+
+    <nav class="page-links" aria-label="画面移動">
+      <a href="index.html">工数入力</a>
+      <a href="summary.html">集計画面</a>
+      <a href="workers.html">作業者管理</a>
+    </nav>
+
+    <div class="filter-row">
+      <div class="form-group">
+        <label>開始日</label>
+        <input type="date" id="date_from">
+      </div>
+      <div class="form-group">
+        <label>終了日</label>
+        <input type="date" id="date_to">
+      </div>
+    </div>
+
+    <button onclick="loadLogs()">表示する</button>
+    <div id="log_list" class="log-list"></div>
+
+    <section id="edit_panel" class="edit-panel" aria-label="編集フォーム">
+      <h2>内容を編集</h2>
+
+      <div class="form-group">
+        <label>日付</label>
+        <input type="date" id="edit_work_date">
+      </div>
+
+      <div class="form-group" id="edit_worker_group">
+        <label>作業者</label>
+        <select id="edit_worker"></select>
+      </div>
+
+      <div class="form-group">
+        <label>製番</label>
+        <input type="text" id="edit_seiban" placeholder="例: A001" oninput="searchEditSeiban()">
+        <span id="edit_seiban_status"></span>
+      </div>
+
+      <div class="form-group">
+        <label>設備名</label>
+        <input type="text" id="edit_equipment_name" placeholder="製番を入力すると自動表示">
+      </div>
+
+      <div class="form-group">
+        <label>作業内容</label>
+        <select id="edit_work_type"></select>
+      </div>
+
+      <div class="form-group">
+        <label>開始時間</label>
+        <input type="time" id="edit_start_time">
+      </div>
+
+      <div class="form-group">
+        <label>終了時間</label>
+        <input type="time" id="edit_end_time">
+      </div>
+
+      <div class="form-group">
+        <label>休憩① (分)</label>
+        <input type="number" id="edit_break1" value="0" min="0">
+      </div>
+
+      <div class="form-group">
+        <label>休憩② (分)</label>
+        <input type="number" id="edit_break2" value="0" min="0">
+      </div>
+
+      <div class="form-group">
+        <label>実働時間</label>
+        <div id="edit_actual_time" class="actual-time">--時間--分</div>
+      </div>
+
+      <div class="form-group">
+        <label>備考</label>
+        <textarea id="edit_note" rows="3" placeholder="任意"></textarea>
+      </div>
+
+      <div class="button-row">
+        <button onclick="updateLog()">更新する</button>
+        <button class="secondary-btn" onclick="cancelEdit()">キャンセル</button>
+      </div>
+    </section>
+
+    <div id="message"></div>
+  </div>
+
+  <script src="logs.js" type="module"></script>
+</body>
+</html>

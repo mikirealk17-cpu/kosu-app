@@ -20,6 +20,8 @@ alter table public.worker_master enable row level security;
 
 grant select, insert, update on public.worker_master to anon;
 grant select, insert, update on public.worker_master to authenticated;
+grant select, insert, update on public.work_logs to anon;
+grant select, insert, update on public.work_logs to authenticated;
 
 drop policy if exists "worker_master_select_public" on public.worker_master;
 create policy "worker_master_select_public"
@@ -38,6 +40,14 @@ with check (true);
 drop policy if exists "worker_master_update_public" on public.worker_master;
 create policy "worker_master_update_public"
 on public.worker_master
+for update
+to anon
+using (true)
+with check (true);
+
+drop policy if exists "work_logs_update_public" on public.work_logs;
+create policy "work_logs_update_public"
+on public.work_logs
 for update
 to anon
 using (true)

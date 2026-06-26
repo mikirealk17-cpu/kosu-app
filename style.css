@@ -26,7 +26,7 @@ h1 {
 
 .page-links {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 20px;
 }
@@ -156,12 +156,75 @@ button:active {
   line-height: 1.6;
 }
 
+h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.filter-row,
+.button-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.log-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.log-item {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.log-main {
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.log-sub {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.log-item button {
+  margin-top: 10px;
+  padding: 12px;
+  font-size: 16px;
+}
+
+.edit-panel {
+  display: none;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+}
+
+.edit-panel.active {
+  display: block;
+}
+
+.secondary-btn {
+  background: #6c757d;
+}
+
 @media (max-width: 480px) {
   .container {
     padding: 12px;
   }
 
   .page-links {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-row,
+  .button-row {
     grid-template-columns: 1fr;
   }
 
