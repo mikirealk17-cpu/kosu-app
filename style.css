@@ -98,11 +98,17 @@ button:active {
 }
 
 #message {
+  display: none;
   margin-top: 12px;
   padding: 12px;
   border-radius: 8px;
   text-align: center;
   font-weight: bold;
+}
+
+#message.success,
+#message.error {
+  display: block;
 }
 
 .success {

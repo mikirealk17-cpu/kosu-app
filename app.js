@@ -202,7 +202,10 @@ function showMessage(text, type) {
   const el = document.getElementById('message')
   el.textContent = text
   el.className = type
-  setTimeout(() => { el.textContent = '' }, 3000)
+  setTimeout(() => {
+    el.textContent = ''
+    el.className = ''
+  }, 3000)
 }
 
 // イベントリスナー
