@@ -172,11 +172,20 @@ function renderLogs() {
       minutesToHM(log.actual_minutes || 0)
     ].join(' / ')
 
-    const button = document.createElement('button')
-    button.textContent = '編集する'
-    button.addEventListener('click', () => startEdit(log.id))
+    const actions = document.createElement('div')
+    actions.className = 'log-actions'
 
-    item.append(main, sub, button)
+    const editButton = document.createElement('button')
+    editButton.textContent = '編集する'
+    editButton.addEventListener('click', () => startEdit(log.id))
+
+    const deleteButton = document.createElement('button')
+    deleteButton.className = 'danger-btn'
+    deleteButton.textContent = '削除する'
+    deleteButton.addEventListener('click', () => deleteLog(log.id))
+
+    actions.append(editButton, deleteButton)
+    item.append(main, sub, actions)
     list.appendChild(item)
   })
 }
@@ -214,6 +223,32 @@ function startEdit(id) {
 window.cancelEdit = function() {
   editingLog = null
   document.getElementById('edit_panel').classList.remove('active')
+}
+
+async function deleteLog(id) {
+  const target = logs.find(log => log.id === id)
+  if (!target) return
+
+  const label = `${target.work_date} ${target.seiban_master?.seiban || '製番不明'}`
+  if (!confirm(`${label} の入力履歴を削除しますか？`)) return
+
+  const { error } = await supabase
+    .from('work_logs')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('入力履歴の削除に失敗しました', error)
+    showMessage('❌ 削除に失敗しました', 'error')
+    return
+  }
+
+  if (editingLog?.id === id) {
+    window.cancelEdit()
+  }
+
+  showMessage('✅ 削除しました', 'success')
+  window.loadLogs()
 }
 
 window.searchEditSeiban = async function() {
