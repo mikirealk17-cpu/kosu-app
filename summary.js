@@ -63,6 +63,10 @@ function minutesToHM(minutes) {
   return `${h}h${String(m).padStart(2, '0')}m`
 }
 
+function formatTime(time) {
+  return time ? time.slice(0, 5) : ''
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -70,6 +74,11 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;')
+}
+
+function escapeCsv(value) {
+  const text = value == null ? '' : String(value)
+  return `"${text.replaceAll('"', '""')}"`
 }
 
 async function loadWorkerNameMap() {
@@ -83,6 +92,87 @@ async function loadWorkerNameMap() {
   data.forEach(worker => {
     workerNameMap[worker.id] = worker.name
   })
+}
+
+window.exportCsv = async function() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+
+  const { data, error } = await supabase
+    .from('work_logs')
+    .select(`
+      work_date,
+      worker_id,
+      start_time,
+      end_time,
+      break1_minutes,
+      break2_minutes,
+      actual_minutes,
+      note,
+      seiban_master (
+        seiban,
+        equipment_name
+      ),
+      work_type_master (
+        name
+      )
+    `)
+    .gte('work_date', from)
+    .lte('work_date', to)
+    .order('work_date')
+
+  if (error || !data) {
+    console.error('CSV出力データの取得に失敗しました', error)
+    alert('CSV出力データの取得に失敗しました')
+    return
+  }
+
+  await loadWorkerNameMap()
+
+  const headers = [
+    '日付',
+    '作業者',
+    '製番',
+    '設備名',
+    '作業内容',
+    '開始時間',
+    '終了時間',
+    '休憩1分',
+    '休憩2分',
+    '実働分',
+    '実働時間',
+    '備考'
+  ]
+
+  const rows = data.map(row => [
+    row.work_date,
+    workerNameMap[row.worker_id] || '',
+    row.seiban_master?.seiban || '',
+    row.seiban_master?.equipment_name || '',
+    row.work_type_master?.name || '',
+    formatTime(row.start_time),
+    formatTime(row.end_time),
+    row.break1_minutes || 0,
+    row.break2_minutes || 0,
+    row.actual_minutes || 0,
+    minutesToHM(row.actual_minutes || 0),
+    row.note || ''
+  ])
+
+  const csv = [
+    headers.map(escapeCsv).join(','),
+    ...rows.map(row => row.map(escapeCsv).join(','))
+  ].join('\n')
+
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `kosu_${from}_${to}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
 async function loadWorkerSummary() {
