@@ -16,6 +16,8 @@ window.switchTab = function(tab) {
 }
 
 window.loadData = async function() {
+  setSummaryStatus('集計を更新中です...')
+
   if (currentTab === 'worker') {
     await loadWorkerSummary()
     return
@@ -42,12 +44,14 @@ window.loadData = async function() {
     console.error('集計データの取得に失敗しました', error)
     const message = error?.message ? `データの取得に失敗しました: ${escapeHtml(error.message)}` : 'データの取得に失敗しました'
     document.getElementById('summary_table').innerHTML = `<p>${message}</p>`
+    setSummaryStatus('集計の取得に失敗しました')
     return
   }
 
   if (currentTab === 'seiban') renderSeiban(data)
   if (currentTab === 'equipment') renderEquipment(data)
   if (currentTab === 'daily') renderDaily(data)
+  setSummaryStatus(`${data.length}件のデータを表示しました`)
 }
 
 function formatDate(date) {
@@ -79,6 +83,10 @@ function escapeHtml(value) {
 function escapeCsv(value) {
   const text = value == null ? '' : String(value)
   return `"${text.replaceAll('"', '""')}"`
+}
+
+function setSummaryStatus(text) {
+  document.getElementById('summary_status').textContent = text
 }
 
 async function loadWorkerNameMap() {
@@ -188,11 +196,13 @@ async function loadWorkerSummary() {
   if (error || !data) {
     console.error('作業者別集計データの取得に失敗しました', error)
     document.getElementById('summary_table').innerHTML = '<p>作業者別集計には、Supabase側でworker_masterとwork_logs.worker_idの設定が必要です</p>'
+    setSummaryStatus('作業者別集計の取得に失敗しました')
     return
   }
 
   await loadWorkerNameMap()
   renderWorker(data)
+  setSummaryStatus(`${data.length}件のデータを表示しました`)
 }
 
 function renderSeiban(data) {
