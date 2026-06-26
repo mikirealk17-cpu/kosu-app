@@ -61,13 +61,30 @@ label {
 }
 
 input, select, textarea {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  inline-size: 100%;
+  max-inline-size: 100%;
   min-width: 0;
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 8px;
   font-size: 16px;
   background: #fff;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="number"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 46px;
+}
+
+input::-webkit-date-and-time-value {
+  min-height: 20px;
+  text-align: left;
 }
 
 input:focus, select:focus, textarea:focus {
