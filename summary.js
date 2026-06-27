@@ -60,6 +60,7 @@ window.loadData = async function() {
   if (currentTab === 'seiban') renderSeiban(data)
   if (currentTab === 'equipment') renderEquipment(data)
   if (currentTab === 'daily') renderDaily(data)
+  if (currentTab === 'monthly') renderMonthly(data)
   setSummaryStatus(`${data.length}件のデータを表示しました`)
 }
 
@@ -357,6 +358,28 @@ function renderDaily(data) {
     total += minutes
   })
   html += `<tr class="total-row"><td>合計</td><td>${minutesToHM(total)}</td></tr>`
+  html += '</table>'
+  document.getElementById('summary_table').innerHTML = html
+}
+
+function renderMonthly(data) {
+  const map = {}
+  data.forEach(row => {
+    const month = row.work_date.slice(0, 7)
+    if (!map[month]) map[month] = { minutes: 0, count: 0 }
+    map[month].minutes += row.actual_minutes || 0
+    map[month].count += 1
+  })
+
+  let html = '<table><tr><th>月</th><th>件数</th><th>工数</th></tr>'
+  let totalMinutes = 0
+  let totalCount = 0
+  Object.entries(map).forEach(([month, val]) => {
+    html += `<tr><td>${escapeHtml(month)}</td><td>${val.count}件</td><td>${minutesToHM(val.minutes)}</td></tr>`
+    totalMinutes += val.minutes
+    totalCount += val.count
+  })
+  html += `<tr class="total-row"><td>合計</td><td>${totalCount}件</td><td>${minutesToHM(totalMinutes)}</td></tr>`
   html += '</table>'
   document.getElementById('summary_table').innerHTML = html
 }
