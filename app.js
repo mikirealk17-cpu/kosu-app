@@ -105,6 +105,11 @@ function timeToMinutes(time) {
   return h * 60 + m
 }
 
+function setBreakMinutes(inputId, minutes) {
+  document.getElementById(inputId).value = String(minutes)
+  calcActualTime()
+}
+
 // 保存する
 async function saveLog() {
   const workerId = document.getElementById('worker').value
@@ -260,6 +265,7 @@ document.getElementById('break2').addEventListener('input', calcActualTime)
 
 window.searchSeiban = searchSeiban
 window.saveLog = saveLog
+window.setBreakMinutes = setBreakMinutes
 
 async function loadWorkers() {
   const { data, error } = await supabase
