@@ -45,11 +45,25 @@
     <div class="form-group">
       <label>開始時間</label>
       <input type="time" id="start_time">
+      <div class="quick-buttons" aria-label="開始時間の入力補助">
+        <button type="button" onclick="setTimeValue('start_time', '08:00')">8:00</button>
+        <button type="button" onclick="setTimeValue('start_time', '08:30')">8:30</button>
+        <button type="button" onclick="setTimeValue('start_time', '09:00')">9:00</button>
+        <button type="button" onclick="setTimeValue('start_time', '13:00')">13:00</button>
+      </div>
     </div>
 
     <div class="form-group">
       <label>終了時間</label>
       <input type="time" id="end_time">
+      <div class="quick-buttons" aria-label="終了時間の入力補助">
+        <button type="button" onclick="setTimeValue('end_time', '12:00')">12:00</button>
+        <button type="button" onclick="setTimeValue('end_time', '15:00')">15:00</button>
+        <button type="button" onclick="setTimeValue('end_time', '17:00')">17:00</button>
+        <button type="button" onclick="setTimeValue('end_time', '17:30')">17:30</button>
+        <button type="button" onclick="setTimeValue('end_time', '18:00')">18:00</button>
+        <button type="button" onclick="setTimeValue('end_time', '20:00')">20:00</button>
+      </div>
     </div>
 
     <div class="form-group">
