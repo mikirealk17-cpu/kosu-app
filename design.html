@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>デザイン案</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .design-viewer {
+      display: grid;
+      gap: 14px;
+    }
+
+    .design-image-wrap {
+      overflow-x: auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .design-image-wrap img {
+      display: block;
+      width: 100%;
+      min-width: 760px;
+      height: auto;
+    }
+
+    .design-note {
+      color: #555;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 480px) {
+      .design-image-wrap img {
+        min-width: 920px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>デザイン案</h1>
+
+    <nav class="page-links" aria-label="画面移動">
+      <a href="index.html">工数入力</a>
+      <a href="summary.html">集計画面</a>
+      <a href="admin.html">管理画面</a>
+    </nav>
+
+    <div class="design-viewer">
+      <p class="design-note">
+        工数管理アプリのUIデザイン案です。スマホでは画像を横にスクロールして確認できます。
+      </p>
+      <div class="design-image-wrap">
+        <img src="design-mockups.png" alt="工数管理アプリのデザイン案3種類">
+      </div>
+    </div>
+  </div>
+</body>
+</html>
