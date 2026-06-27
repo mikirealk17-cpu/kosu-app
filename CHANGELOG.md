@@ -25,4 +25,5 @@
 - 管理画面、作業内容マスタ管理画面、製番マスタ管理画面を追加
 - Supabase設定、worker_id保存、実データ工数保存、作業者管理の追加・編集・削除を確認
 - TODOを現時点の完了状態へ更新
+- 次期改善用のTODOリストを新規作成
 - README、PROJECT、TODO、CHANGELOGを追加
