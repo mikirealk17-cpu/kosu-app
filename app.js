@@ -79,12 +79,15 @@ async function searchSeiban() {
 
 // 実働時間を計算
 function calcActualTime() {
-  const start = document.getElementById('start_time').value
-  const end = document.getElementById('end_time').value
+  const start = normalizeTimeInput(document.getElementById('start_time').value)
+  const end = normalizeTimeInput(document.getElementById('end_time').value)
   const break1 = parseInt(document.getElementById('break1').value) || 0
   const break2 = parseInt(document.getElementById('break2').value) || 0
 
-  if (!start || !end) return
+  if (!start || !end) {
+    document.getElementById('actual_time').textContent = '--時間--分'
+    return
+  }
 
   const startMin = timeToMinutes(start)
   const endMin = timeToMinutes(end)
@@ -100,6 +103,29 @@ function calcActualTime() {
   document.getElementById('actual_time').textContent = `${h}時間${m}分`
 }
 
+function sanitizeNumericInput(id, maxLength = null) {
+  const input = document.getElementById(id)
+  let value = input.value.replace(/\D/g, '')
+  if (maxLength) value = value.slice(0, maxLength)
+  input.value = value
+}
+
+function normalizeTimeInput(value) {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length !== 4) return ''
+
+  const h = Number(digits.slice(0, 2))
+  const m = Number(digits.slice(2, 4))
+  if (h > 23 || m > 59) return ''
+
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+function handleNumericInput(id, maxLength = null) {
+  sanitizeNumericInput(id, maxLength)
+  calcActualTime()
+}
+
 function timeToMinutes(time) {
   const [h, m] = time.split(':').map(Number)
   return h * 60 + m
@@ -112,8 +138,8 @@ async function saveLog() {
   const equipmentName = document.getElementById('equipment_name').value.trim()
   const workTypeId = document.getElementById('work_type').value
   const workDate = document.getElementById('work_date').value
-  const startTime = document.getElementById('start_time').value
-  const endTime = document.getElementById('end_time').value
+  const startTime = normalizeTimeInput(document.getElementById('start_time').value)
+  const endTime = normalizeTimeInput(document.getElementById('end_time').value)
   const break1 = parseInt(document.getElementById('break1').value) || 0
   const break2 = parseInt(document.getElementById('break2').value) || 0
   const note = document.getElementById('note').value.trim()
@@ -253,10 +279,10 @@ function showMessage(text, type) {
 }
 
 // イベントリスナー
-document.getElementById('start_time').addEventListener('input', calcActualTime)
-document.getElementById('end_time').addEventListener('input', calcActualTime)
-document.getElementById('break1').addEventListener('input', calcActualTime)
-document.getElementById('break2').addEventListener('input', calcActualTime)
+document.getElementById('start_time').addEventListener('input', () => handleNumericInput('start_time', 4))
+document.getElementById('end_time').addEventListener('input', () => handleNumericInput('end_time', 4))
+document.getElementById('break1').addEventListener('input', () => handleNumericInput('break1'))
+document.getElementById('break2').addEventListener('input', () => handleNumericInput('break2'))
 
 window.searchSeiban = searchSeiban
 window.saveLog = saveLog

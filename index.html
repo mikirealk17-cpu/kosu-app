@@ -44,22 +44,22 @@
 
     <div class="form-group">
       <label>開始時間</label>
-      <input type="time" id="start_time">
+      <input type="text" id="start_time" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="例: 0800">
     </div>
 
     <div class="form-group">
       <label>終了時間</label>
-      <input type="time" id="end_time">
+      <input type="text" id="end_time" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="例: 1700">
     </div>
 
     <div class="form-group">
       <label>休憩① (分)</label>
-      <input type="number" id="break1" value="0" min="0">
+      <input type="text" id="break1" inputmode="numeric" pattern="[0-9]*" value="0" placeholder="例: 60">
     </div>
 
     <div class="form-group">
       <label>休憩② (分)</label>
-      <input type="number" id="break2" value="0" min="0">
+      <input type="text" id="break2" inputmode="numeric" pattern="[0-9]*" value="0" placeholder="例: 0">
     </div>
 
     <div class="form-group">
