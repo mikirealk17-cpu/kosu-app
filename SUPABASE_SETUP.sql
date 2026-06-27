@@ -16,17 +16,24 @@ alter table public.work_logs
 create index if not exists work_logs_worker_id_idx
   on public.work_logs(worker_id);
 
+-- RLS運用方針:
+-- このアプリはログインなしで使うため、利用者はSupabase上では anon として扱われます。
+-- そのため、ここでは「アプリで必要な操作だけ」を anon に許可します。
+-- service_role などの秘密キーはブラウザ用JavaScriptへ絶対に書かないでください。
+-- URLを知っている人は下記の操作ができます。社外公開や個人情報保存には向きません。
+
 alter table public.worker_master enable row level security;
+alter table public.work_logs enable row level security;
+alter table public.work_type_master enable row level security;
+alter table public.seiban_master enable row level security;
 
+-- API権限。RLSポリシーと両方そろって初めて操作できます。
 grant select, insert, update on public.worker_master to anon;
-grant select, insert, update on public.worker_master to authenticated;
 grant select, insert, update, delete on public.work_logs to anon;
-grant select, insert, update, delete on public.work_logs to authenticated;
 grant select, insert, update on public.work_type_master to anon;
-grant select, insert, update on public.work_type_master to authenticated;
 grant select, insert, update, delete on public.seiban_master to anon;
-grant select, insert, update, delete on public.seiban_master to authenticated;
 
+-- 作業者マスタ: 表示、追加、編集、非表示化(is_active=false)を許可します。
 drop policy if exists "worker_master_select_public" on public.worker_master;
 create policy "worker_master_select_public"
 on public.worker_master
@@ -49,6 +56,21 @@ to anon
 using (true)
 with check (true);
 
+-- 工数記録: 入力、集計、履歴編集、履歴削除で必要な操作を許可します。
+drop policy if exists "work_logs_select_public" on public.work_logs;
+create policy "work_logs_select_public"
+on public.work_logs
+for select
+to anon
+using (true);
+
+drop policy if exists "work_logs_insert_public" on public.work_logs;
+create policy "work_logs_insert_public"
+on public.work_logs
+for insert
+to anon
+with check (true);
+
 drop policy if exists "work_logs_update_public" on public.work_logs;
 create policy "work_logs_update_public"
 on public.work_logs
@@ -64,8 +86,7 @@ for delete
 to anon
 using (true);
 
-alter table public.work_type_master enable row level security;
-
+-- 作業内容マスタ: 表示、追加、編集、非表示化(is_active=false)を許可します。
 drop policy if exists "work_type_master_select_public" on public.work_type_master;
 create policy "work_type_master_select_public"
 on public.work_type_master
@@ -88,8 +109,8 @@ to anon
 using (true)
 with check (true);
 
-alter table public.seiban_master enable row level security;
-
+-- 製番マスタ: 表示、追加、編集、削除を許可します。
+-- 過去の工数で使われている製番は外部キー制約により削除に失敗する場合があります。
 drop policy if exists "seiban_master_select_public" on public.seiban_master;
 create policy "seiban_master_select_public"
 on public.seiban_master
