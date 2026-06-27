@@ -31,14 +31,14 @@ function minutesToHM(minutes) {
   return `${h}時間${m}分`
 }
 
-function showMessage(text, type) {
+function showMessage(text, type, duration = 3000) {
   const el = document.getElementById('message')
   el.textContent = text
   el.className = type
   setTimeout(() => {
     el.textContent = ''
     el.className = ''
-  }, 3000)
+  }, duration)
 }
 
 async function loadWorkTypes() {
@@ -251,7 +251,7 @@ async function deleteLog(id) {
     window.cancelEdit()
   }
 
-  showMessage('✅ 削除しました', 'success')
+  showMessage(`✅ 削除しました\n${createDeleteConfirmText(target)}`, 'success', 6000)
   window.loadLogs()
 }
 
@@ -267,9 +267,31 @@ function createDeleteConfirmText(log) {
 }
 
 function getWorkerName(workerId) {
-  const select = document.getElementById('filter_worker')
-  const option = [...select.options].find(item => item.value === workerId)
+  const selects = [
+    document.getElementById('filter_worker'),
+    document.getElementById('edit_worker')
+  ].filter(Boolean)
+  const option = selects
+    .flatMap(select => [...select.options])
+    .find(item => item.value === workerId)
   return option?.textContent || '作業者未設定'
+}
+
+function getSelectText(id) {
+  const select = document.getElementById(id)
+  return select.options[select.selectedIndex]?.textContent || ''
+}
+
+function createUpdatedConfirmText(data) {
+  return [
+    `日付: ${data.workDate}`,
+    `作業者: ${getWorkerName(data.workerId)}`,
+    `製番: ${data.seiban}`,
+    `設備名: ${data.equipmentName}`,
+    `作業内容: ${data.workTypeName}`,
+    `時間: ${data.startTime}-${data.endTime}`,
+    `工数: ${minutesToHM(data.actualMinutes)}`
+  ].join('\n')
 }
 
 function getFilters() {
@@ -450,6 +472,17 @@ window.updateLog = async function() {
     updateData.worker_id = workerId || null
   }
 
+  const updatedText = createUpdatedConfirmText({
+    workDate,
+    workerId,
+    seiban,
+    equipmentName,
+    workTypeName: getSelectText('edit_work_type'),
+    startTime,
+    endTime,
+    actualMinutes
+  })
+
   const { error } = await supabase
     .from('work_logs')
     .update(updateData)
@@ -461,7 +494,7 @@ window.updateLog = async function() {
     return
   }
 
-  showMessage('✅ 更新しました', 'success')
+  showMessage(`✅ 更新しました\n${updatedText}`, 'success', 6000)
   editingLog = null
   document.getElementById('edit_panel').classList.remove('active')
   window.loadLogs()
