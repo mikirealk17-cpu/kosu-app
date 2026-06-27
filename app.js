@@ -277,8 +277,8 @@ function resetFormForNextInput() {
   document.getElementById('seiban_status').textContent = ''
   document.getElementById('start_time').value = ''
   document.getElementById('end_time').value = ''
-  document.getElementById('break1').value = '0'
-  document.getElementById('break2').value = '0'
+  document.getElementById('break1').value = ''
+  document.getElementById('break2').value = ''
   document.getElementById('actual_time').textContent = '--時間--分'
   document.getElementById('note').value = ''
   document.getElementById('seiban').focus()
