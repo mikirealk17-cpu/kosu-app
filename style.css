@@ -182,6 +182,64 @@ h2 {
   margin-bottom: 12px;
 }
 
+.admin-menu,
+.master-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-menu a,
+.master-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  text-decoration: none;
+}
+
+.admin-menu span,
+.master-text span {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.master-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.master-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.master-actions,
+.add-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, auto));
+  gap: 8px;
+  align-items: center;
+}
+
+.add-form {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 120px) auto;
+}
+
+.master-actions button,
+.add-form button {
+  width: auto;
+  min-height: 44px;
+  margin-top: 0;
+  padding: 10px 14px;
+  font-size: 15px;
+}
+
 .log-list {
   display: grid;
   gap: 10px;
@@ -251,8 +309,16 @@ h2 {
   .filter-row,
   .button-row,
   .log-actions,
-  .summary-filters {
+  .summary-filters,
+  .master-item,
+  .master-actions,
+  .add-form {
     grid-template-columns: 1fr;
+  }
+
+  .master-actions button,
+  .add-form button {
+    width: 100%;
   }
 
   button {

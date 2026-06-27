@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>製番管理</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>製番管理</h1>
+
+    <nav class="page-links" aria-label="画面移動">
+      <a href="admin.html">管理画面</a>
+      <a href="index.html">工数入力</a>
+      <a href="summary.html">集計画面</a>
+    </nav>
+
+    <div class="form-group">
+      <label>製番を追加</label>
+      <div class="add-form">
+        <input type="text" id="new_seiban" placeholder="製番">
+        <input type="text" id="new_equipment_name" placeholder="設備名">
+        <button onclick="addSeiban()">追加</button>
+      </div>
+    </div>
+
+    <div id="seiban_list" class="master-list"></div>
+    <div id="message"></div>
+  </div>
+
+  <script src="seibans.js" type="module"></script>
+</body>
+</html>

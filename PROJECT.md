@@ -18,7 +18,10 @@
 - `index.html`: 工数入力画面
 - `summary.html`: 集計画面
 - `logs.html`: 入力履歴編集画面
+- `admin.html`: 管理画面
 - `workers.html`: 作業者管理画面
+- `work-types.html`: 作業内容マスタ管理画面
+- `seibans.html`: 製番マスタ管理画面
 
 ## データベース
 

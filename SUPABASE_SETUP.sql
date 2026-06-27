@@ -22,6 +22,10 @@ grant select, insert, update on public.worker_master to anon;
 grant select, insert, update on public.worker_master to authenticated;
 grant select, insert, update, delete on public.work_logs to anon;
 grant select, insert, update, delete on public.work_logs to authenticated;
+grant select, insert, update on public.work_type_master to anon;
+grant select, insert, update on public.work_type_master to authenticated;
+grant select, insert, update, delete on public.seiban_master to anon;
+grant select, insert, update, delete on public.seiban_master to authenticated;
 
 drop policy if exists "worker_master_select_public" on public.worker_master;
 create policy "worker_master_select_public"
@@ -56,6 +60,61 @@ with check (true);
 drop policy if exists "work_logs_delete_public" on public.work_logs;
 create policy "work_logs_delete_public"
 on public.work_logs
+for delete
+to anon
+using (true);
+
+alter table public.work_type_master enable row level security;
+
+drop policy if exists "work_type_master_select_public" on public.work_type_master;
+create policy "work_type_master_select_public"
+on public.work_type_master
+for select
+to anon
+using (true);
+
+drop policy if exists "work_type_master_insert_public" on public.work_type_master;
+create policy "work_type_master_insert_public"
+on public.work_type_master
+for insert
+to anon
+with check (true);
+
+drop policy if exists "work_type_master_update_public" on public.work_type_master;
+create policy "work_type_master_update_public"
+on public.work_type_master
+for update
+to anon
+using (true)
+with check (true);
+
+alter table public.seiban_master enable row level security;
+
+drop policy if exists "seiban_master_select_public" on public.seiban_master;
+create policy "seiban_master_select_public"
+on public.seiban_master
+for select
+to anon
+using (true);
+
+drop policy if exists "seiban_master_insert_public" on public.seiban_master;
+create policy "seiban_master_insert_public"
+on public.seiban_master
+for insert
+to anon
+with check (true);
+
+drop policy if exists "seiban_master_update_public" on public.seiban_master;
+create policy "seiban_master_update_public"
+on public.seiban_master
+for update
+to anon
+using (true)
+with check (true);
+
+drop policy if exists "seiban_master_delete_public" on public.seiban_master;
+create policy "seiban_master_delete_public"
+on public.seiban_master
 for delete
 to anon
 using (true);
