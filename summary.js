@@ -25,20 +25,29 @@ window.loadData = async function() {
 
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
+  const filters = getFilters()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('work_logs')
     .select(`
       actual_minutes,
       work_date,
+      worker_id,
       seiban_master (
         seiban,
         equipment_name
+      ),
+      work_type_master (
+        name
       )
     `)
     .gte('work_date', from)
     .lte('work_date', to)
     .order('work_date')
+
+  query = applyFilters(query, filters)
+
+  const { data, error } = await query
 
   if (error || !data) {
     console.error('集計データの取得に失敗しました', error)
@@ -89,6 +98,21 @@ function setSummaryStatus(text) {
   document.getElementById('summary_status').textContent = text
 }
 
+function getFilters() {
+  return {
+    workerId: document.getElementById('filter_worker').value,
+    workTypeId: document.getElementById('filter_work_type').value,
+    seibanId: document.getElementById('filter_seiban').value
+  }
+}
+
+function applyFilters(query, filters) {
+  if (filters.workerId) query = query.eq('worker_id', filters.workerId)
+  if (filters.workTypeId) query = query.eq('work_type_id', filters.workTypeId)
+  if (filters.seibanId) query = query.eq('seiban_id', filters.seibanId)
+  return query
+}
+
 async function loadWorkerNameMap() {
   const { data } = await supabase
     .from('worker_master')
@@ -102,11 +126,76 @@ async function loadWorkerNameMap() {
   })
 }
 
+async function loadFilterOptions() {
+  await Promise.all([
+    loadWorkerOptions(),
+    loadWorkTypeOptions(),
+    loadSeibanOptions()
+  ])
+}
+
+async function loadWorkerOptions() {
+  const { data } = await supabase
+    .from('worker_master')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
+
+  const select = document.getElementById('filter_worker')
+  select.innerHTML = '<option value="">全作業者</option>'
+  if (!data) return
+
+  data.forEach(worker => {
+    const option = document.createElement('option')
+    option.value = worker.id
+    option.textContent = worker.name
+    select.appendChild(option)
+  })
+}
+
+async function loadWorkTypeOptions() {
+  const { data } = await supabase
+    .from('work_type_master')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
+
+  const select = document.getElementById('filter_work_type')
+  select.innerHTML = '<option value="">全作業内容</option>'
+  if (!data) return
+
+  data.forEach(type => {
+    const option = document.createElement('option')
+    option.value = type.id
+    option.textContent = type.name
+    select.appendChild(option)
+  })
+}
+
+async function loadSeibanOptions() {
+  const { data } = await supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name')
+    .order('seiban')
+
+  const select = document.getElementById('filter_seiban')
+  select.innerHTML = '<option value="">全製番</option>'
+  if (!data) return
+
+  data.forEach(item => {
+    const option = document.createElement('option')
+    option.value = item.id
+    option.textContent = `${item.seiban} ${item.equipment_name || ''}`.trim()
+    select.appendChild(option)
+  })
+}
+
 window.exportCsv = async function() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
+  const filters = getFilters()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('work_logs')
     .select(`
       work_date,
@@ -128,6 +217,10 @@ window.exportCsv = async function() {
     .gte('work_date', from)
     .lte('work_date', to)
     .order('work_date')
+
+  query = applyFilters(query, filters)
+
+  const { data, error } = await query
 
   if (error || !data) {
     console.error('CSV出力データの取得に失敗しました', error)
@@ -186,12 +279,17 @@ window.exportCsv = async function() {
 async function loadWorkerSummary() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
+  const filters = getFilters()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('work_logs')
-    .select('actual_minutes, worker_id')
+    .select('actual_minutes, worker_id, seiban_id, work_type_id')
     .gte('work_date', from)
     .lte('work_date', to)
+
+  query = applyFilters(query, filters)
+
+  const { data, error } = await query
 
   if (error || !data) {
     console.error('作業者別集計データの取得に失敗しました', error)
@@ -282,4 +380,5 @@ function renderWorker(data) {
   document.getElementById('summary_table').innerHTML = html
 }
 
+await loadFilterOptions()
 window.loadData()
