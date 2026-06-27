@@ -39,6 +39,19 @@
     .period-select input {
       min-width: 0;
     }
+    .csv-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .csv-actions button {
+      width: auto;
+      margin-top: 0;
+      padding: 12px 16px;
+      font-size: 15px;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -101,6 +114,12 @@
         width: 100% !important;
         margin-top: 0;
       }
+      .csv-actions {
+        grid-template-columns: 1fr;
+      }
+      .csv-actions button {
+        width: 100%;
+      }
       th,
       td {
         padding: 10px 8px;
@@ -147,7 +166,13 @@
       </select>
     </div>
     <div id="summary_status" class="status-text"></div>
-    <button class="secondary-btn" onclick="exportCsv()">CSV出力</button>
+    <div class="csv-actions">
+      <select id="csv_type" aria-label="CSVの種類">
+        <option value="detail">明細CSV</option>
+        <option value="summary">集計CSV</option>
+      </select>
+      <button class="secondary-btn" onclick="exportCsv()">CSV出力</button>
+    </div>
 
     <div id="summary_table"></div>
   </div>

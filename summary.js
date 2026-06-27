@@ -203,6 +203,16 @@ async function loadSeibanOptions() {
 }
 
 window.exportCsv = async function() {
+  const csvType = document.getElementById('csv_type').value
+  if (csvType === 'summary') {
+    await exportSummaryCsv()
+    return
+  }
+
+  await exportDetailCsv()
+}
+
+async function fetchSummaryRows() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
   const filters = getFilters()
@@ -235,8 +245,22 @@ window.exportCsv = async function() {
   const { data, error } = await query
 
   if (error || !data) {
-    console.error('CSV出力データの取得に失敗しました', error)
-    alert('CSV出力データの取得に失敗しました')
+    throw error || new Error('CSV出力データの取得に失敗しました')
+  }
+
+  return data
+}
+
+async function exportDetailCsv() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  let data
+
+  try {
+    data = await fetchSummaryRows()
+  } catch (error) {
+    console.error('明細CSV出力データの取得に失敗しました', error)
+    alert('明細CSV出力データの取得に失敗しました')
     return
   }
 
@@ -272,20 +296,183 @@ window.exportCsv = async function() {
     row.note || ''
   ])
 
+  downloadCsv(headers, rows, `kosu_detail_${from}_${to}.csv`)
+}
+
+async function exportSummaryCsv() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  let data
+
+  try {
+    data = await fetchSummaryRows()
+  } catch (error) {
+    console.error('集計CSV出力データの取得に失敗しました', error)
+    alert('集計CSV出力データの取得に失敗しました')
+    return
+  }
+
+  await loadWorkerNameMap()
+  const { headers, rows } = createSummaryCsvRows(data)
+  downloadCsv(headers, rows, `kosu_summary_${currentTab}_${from}_${to}.csv`)
+}
+
+function downloadCsv(headers, rows, filename) {
   const csv = [
     headers.map(escapeCsv).join(','),
     ...rows.map(row => row.map(escapeCsv).join(','))
   ].join('\n')
-
   const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `kosu_${from}_${to}.csv`
+  link.download = filename
   document.body.appendChild(link)
   link.click()
   link.remove()
   URL.revokeObjectURL(url)
+}
+
+function createSummaryCsvRows(data) {
+  if (currentTab === 'seiban') return createSeibanSummaryRows(data)
+  if (currentTab === 'seiban_detail') return createSeibanDetailRows(data)
+  if (currentTab === 'equipment') return createEquipmentSummaryRows(data)
+  if (currentTab === 'daily') return createDailySummaryRows(data)
+  if (currentTab === 'monthly') return createMonthlySummaryRows(data)
+  if (currentTab === 'worker_daily') return createWorkerDailySummaryRows(data)
+  if (currentTab === 'worker') return createWorkerSummaryRows(data)
+  return { headers: ['項目', '工数'], rows: [] }
+}
+
+function createSeibanSummaryRows(data) {
+  const map = {}
+  data.forEach(row => {
+    const seiban = row.seiban_master?.seiban || '不明'
+    const equipment = row.seiban_master?.equipment_name || '不明'
+    if (!map[seiban]) map[seiban] = { equipment, minutes: 0 }
+    map[seiban].minutes += row.actual_minutes || 0
+  })
+
+  return {
+    headers: ['製番', '設備名', '実働分', '実働時間'],
+    rows: Object.entries(map).map(([seiban, val]) => [
+      seiban,
+      val.equipment,
+      val.minutes,
+      minutesToHM(val.minutes)
+    ])
+  }
+}
+
+function createSeibanDetailRows(data) {
+  return {
+    headers: ['日付', '製番', '設備名', '作業者', '開始時間', '終了時間', '実働分', '実働時間'],
+    rows: data.map(row => [
+      row.work_date,
+      row.seiban_master?.seiban || '',
+      row.seiban_master?.equipment_name || '',
+      workerNameMap[row.worker_id] || '',
+      formatTime(row.start_time),
+      formatTime(row.end_time),
+      row.actual_minutes || 0,
+      minutesToHM(row.actual_minutes || 0)
+    ])
+  }
+}
+
+function createEquipmentSummaryRows(data) {
+  const map = {}
+  data.forEach(row => {
+    const equipment = row.seiban_master?.equipment_name || '不明'
+    if (!map[equipment]) map[equipment] = 0
+    map[equipment] += row.actual_minutes || 0
+  })
+
+  return {
+    headers: ['設備名', '実働分', '実働時間'],
+    rows: Object.entries(map).map(([equipment, minutes]) => [
+      equipment,
+      minutes,
+      minutesToHM(minutes)
+    ])
+  }
+}
+
+function createDailySummaryRows(data) {
+  const map = {}
+  data.forEach(row => {
+    if (!map[row.work_date]) map[row.work_date] = 0
+    map[row.work_date] += row.actual_minutes || 0
+  })
+
+  return {
+    headers: ['日付', '実働分', '実働時間'],
+    rows: Object.entries(map).map(([date, minutes]) => [
+      date,
+      minutes,
+      minutesToHM(minutes)
+    ])
+  }
+}
+
+function createMonthlySummaryRows(data) {
+  const map = {}
+  data.forEach(row => {
+    const month = row.work_date.slice(0, 7)
+    if (!map[month]) map[month] = { minutes: 0, count: 0 }
+    map[month].minutes += row.actual_minutes || 0
+    map[month].count += 1
+  })
+
+  return {
+    headers: ['月', '件数', '実働分', '実働時間'],
+    rows: Object.entries(map).map(([month, val]) => [
+      month,
+      val.count,
+      val.minutes,
+      minutesToHM(val.minutes)
+    ])
+  }
+}
+
+function createWorkerDailySummaryRows(data) {
+  const map = {}
+  data.forEach(row => {
+    const worker = workerNameMap[row.worker_id] || '作業者未設定'
+    const key = `${row.work_date}__${worker}`
+    if (!map[key]) map[key] = { date: row.work_date, worker, minutes: 0, count: 0 }
+    map[key].minutes += row.actual_minutes || 0
+    map[key].count += 1
+  })
+
+  return {
+    headers: ['日付', '作業者', '件数', '実働分', '実働時間'],
+    rows: Object.values(map).map(row => [
+      row.date,
+      row.worker,
+      row.count,
+      row.minutes,
+      minutesToHM(row.minutes)
+    ])
+  }
+}
+
+function createWorkerSummaryRows(data) {
+  const map = {}
+  data.forEach(row => {
+    const worker = workerNameMap[row.worker_id] || '作業者未設定'
+    if (!map[worker]) map[worker] = 0
+    map[worker] += row.actual_minutes || 0
+  })
+
+  return {
+    headers: ['作業者', '実働分', '実働時間'],
+    rows: Object.entries(map).map(([worker, minutes]) => [
+      worker,
+      minutes,
+      minutesToHM(minutes)
+    ])
+  }
 }
 
 async function loadWorkerSummary() {
