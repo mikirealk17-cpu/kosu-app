@@ -112,13 +112,29 @@ function sanitizeNumericInput(id, maxLength = null) {
 
 function normalizeTimeInput(value) {
   const digits = value.replace(/\D/g, '')
-  if (digits.length !== 4) return ''
+  if (digits.length < 1 || digits.length > 4) return ''
 
-  const h = Number(digits.slice(0, 2))
-  const m = Number(digits.slice(2, 4))
+  let h
+  let m
+  if (digits.length <= 2) {
+    h = Number(digits)
+    m = 0
+  } else if (digits.length === 3) {
+    h = Number(digits.slice(0, 1))
+    m = Number(digits.slice(1, 3))
+  } else {
+    h = Number(digits.slice(0, 2))
+    m = Number(digits.slice(2, 4))
+  }
   if (h > 23 || m > 59) return ''
 
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+function formatTimeField(id) {
+  const input = document.getElementById(id)
+  const time = normalizeTimeInput(input.value)
+  if (time) input.value = time
 }
 
 function handleNumericInput(id, maxLength = null) {
@@ -281,6 +297,8 @@ function showMessage(text, type) {
 // イベントリスナー
 document.getElementById('start_time').addEventListener('input', () => handleNumericInput('start_time', 4))
 document.getElementById('end_time').addEventListener('input', () => handleNumericInput('end_time', 4))
+document.getElementById('start_time').addEventListener('blur', () => formatTimeField('start_time'))
+document.getElementById('end_time').addEventListener('blur', () => formatTimeField('end_time'))
 document.getElementById('break1').addEventListener('input', () => handleNumericInput('break1'))
 document.getElementById('break2').addEventListener('input', () => handleNumericInput('break2'))
 
