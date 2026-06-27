@@ -61,6 +61,10 @@ window.loadData = async function() {
   if (currentTab === 'equipment') renderEquipment(data)
   if (currentTab === 'daily') renderDaily(data)
   if (currentTab === 'monthly') renderMonthly(data)
+  if (currentTab === 'worker_daily') {
+    await loadWorkerNameMap()
+    renderWorkerDaily(data)
+  }
   setSummaryStatus(`${data.length}件のデータを表示しました`)
 }
 
@@ -380,6 +384,36 @@ function renderMonthly(data) {
     totalCount += val.count
   })
   html += `<tr class="total-row"><td>合計</td><td>${totalCount}件</td><td>${minutesToHM(totalMinutes)}</td></tr>`
+  html += '</table>'
+  document.getElementById('summary_table').innerHTML = html
+}
+
+function renderWorkerDaily(data) {
+  const map = {}
+  data.forEach(row => {
+    const worker = workerNameMap[row.worker_id] || '作業者未設定'
+    const key = `${row.work_date}__${worker}`
+    if (!map[key]) {
+      map[key] = {
+        date: row.work_date,
+        worker,
+        minutes: 0,
+        count: 0
+      }
+    }
+    map[key].minutes += row.actual_minutes || 0
+    map[key].count += 1
+  })
+
+  let html = '<table><tr><th>日付</th><th>作業者</th><th>件数</th><th>工数</th></tr>'
+  let totalMinutes = 0
+  let totalCount = 0
+  Object.values(map).forEach(row => {
+    html += `<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.worker)}</td><td>${row.count}件</td><td>${minutesToHM(row.minutes)}</td></tr>`
+    totalMinutes += row.minutes
+    totalCount += row.count
+  })
+  html += `<tr class="total-row"><td colspan="2">合計</td><td>${totalCount}件</td><td>${minutesToHM(totalMinutes)}</td></tr>`
   html += '</table>'
   document.getElementById('summary_table').innerHTML = html
 }
