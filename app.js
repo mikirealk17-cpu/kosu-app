@@ -135,6 +135,12 @@ async function saveLog() {
     return
   }
 
+  const hasDuplicate = await hasDuplicateTimeLog(workerId, workDate, startTime, endTime)
+  if (hasDuplicate && !confirm('同じ作業者・同じ日付で時間が重なる入力があります。このまま保存しますか？')) {
+    showMessage('⚠️ 保存を中止しました', 'error')
+    return
+  }
+
   // 製番が未登録なら登録する
   let seibanId
   const { data: existing, error: findSeibanError } = await supabase
@@ -194,8 +200,46 @@ async function saveLog() {
     showMessage('❌ 保存に失敗しました', 'error')
   } else {
     showMessage('✅ 保存しました！', 'success')
-    document.getElementById('note').value = ''
+    resetFormForNextInput()
   }
+}
+
+async function hasDuplicateTimeLog(workerId, workDate, startTime, endTime) {
+  if (!workerFeatureEnabled || !workerId) return false
+
+  const { data, error } = await supabase
+    .from('work_logs')
+    .select('id, start_time, end_time')
+    .eq('work_date', workDate)
+    .eq('worker_id', workerId)
+
+  if (error || !data) {
+    console.error('重複確認に失敗しました', error)
+    return false
+  }
+
+  const startMin = timeToMinutes(startTime)
+  const endMin = timeToMinutes(endTime)
+
+  return data.some(log => {
+    const logStart = timeToMinutes(log.start_time)
+    const logEnd = timeToMinutes(log.end_time)
+    return startMin < logEnd && endMin > logStart
+  })
+}
+
+function resetFormForNextInput() {
+  document.getElementById('seiban').value = ''
+  document.getElementById('equipment_name').value = ''
+  document.getElementById('equipment_name').readOnly = false
+  document.getElementById('seiban_status').textContent = ''
+  document.getElementById('start_time').value = ''
+  document.getElementById('end_time').value = ''
+  document.getElementById('break1').value = '0'
+  document.getElementById('break2').value = '0'
+  document.getElementById('actual_time').textContent = '--時間--分'
+  document.getElementById('note').value = ''
+  document.getElementById('seiban').focus()
 }
 
 function showMessage(text, type) {
