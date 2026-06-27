@@ -102,8 +102,9 @@ window.loadLogs = async function() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
   const workerSelect = workerFeatureEnabled ? 'worker_id,' : ''
+  const filters = getFilters()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('work_logs')
     .select(`
       id,
@@ -129,6 +130,10 @@ window.loadLogs = async function() {
     .lte('work_date', to)
     .order('work_date', { ascending: false })
     .order('created_at', { ascending: false })
+
+  query = applyFilters(query, filters)
+
+  const { data, error } = await query
 
   if (error || !data) {
     console.error('入力履歴の取得に失敗しました', error)
@@ -229,8 +234,7 @@ async function deleteLog(id) {
   const target = logs.find(log => log.id === id)
   if (!target) return
 
-  const label = `${target.work_date} ${target.seiban_master?.seiban || '製番不明'}`
-  if (!confirm(`${label} の入力履歴を削除しますか？`)) return
+  if (!confirm(`${createDeleteConfirmText(target)}\n\nこの入力履歴を削除しますか？`)) return
 
   const { error } = await supabase
     .from('work_logs')
@@ -249,6 +253,102 @@ async function deleteLog(id) {
 
   showMessage('✅ 削除しました', 'success')
   window.loadLogs()
+}
+
+function createDeleteConfirmText(log) {
+  return [
+    `日付: ${log.work_date}`,
+    `作業者: ${getWorkerName(log.worker_id)}`,
+    `製番: ${log.seiban_master?.seiban || '製番不明'}`,
+    `設備名: ${log.seiban_master?.equipment_name || '設備名不明'}`,
+    `時間: ${formatTime(log.start_time)}-${formatTime(log.end_time)}`,
+    `工数: ${minutesToHM(log.actual_minutes || 0)}`
+  ].join('\n')
+}
+
+function getWorkerName(workerId) {
+  const select = document.getElementById('filter_worker')
+  const option = [...select.options].find(item => item.value === workerId)
+  return option?.textContent || '作業者未設定'
+}
+
+function getFilters() {
+  return {
+    workerId: document.getElementById('filter_worker').value,
+    workTypeId: document.getElementById('filter_work_type').value,
+    seibanId: document.getElementById('filter_seiban').value
+  }
+}
+
+function applyFilters(query, filters) {
+  if (filters.workerId) query = query.eq('worker_id', filters.workerId)
+  if (filters.workTypeId) query = query.eq('work_type_id', filters.workTypeId)
+  if (filters.seibanId) query = query.eq('seiban_id', filters.seibanId)
+  return query
+}
+
+async function loadFilterOptions() {
+  await Promise.all([
+    loadWorkerFilterOptions(),
+    loadWorkTypeFilterOptions(),
+    loadSeibanFilterOptions()
+  ])
+}
+
+async function loadWorkerFilterOptions() {
+  const { data } = await supabase
+    .from('worker_master')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
+
+  const select = document.getElementById('filter_worker')
+  select.innerHTML = '<option value="">全作業者</option>'
+  if (!data) return
+
+  data.forEach(worker => {
+    const option = document.createElement('option')
+    option.value = worker.id
+    option.textContent = worker.name
+    select.appendChild(option)
+  })
+}
+
+async function loadWorkTypeFilterOptions() {
+  const { data } = await supabase
+    .from('work_type_master')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
+
+  const select = document.getElementById('filter_work_type')
+  select.innerHTML = '<option value="">全作業内容</option>'
+  if (!data) return
+
+  data.forEach(type => {
+    const option = document.createElement('option')
+    option.value = type.id
+    option.textContent = type.name
+    select.appendChild(option)
+  })
+}
+
+async function loadSeibanFilterOptions() {
+  const { data } = await supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name')
+    .order('seiban')
+
+  const select = document.getElementById('filter_seiban')
+  select.innerHTML = '<option value="">全製番</option>'
+  if (!data) return
+
+  data.forEach(item => {
+    const option = document.createElement('option')
+    option.value = item.id
+    option.textContent = `${item.seiban} ${item.equipment_name || ''}`.trim()
+    select.appendChild(option)
+  })
 }
 
 window.searchEditSeiban = async function() {
@@ -404,4 +504,5 @@ document.getElementById('edit_break2').addEventListener('input', calcEditActualT
 
 await loadWorkTypes()
 await loadWorkers()
+await loadFilterOptions()
 window.loadLogs()

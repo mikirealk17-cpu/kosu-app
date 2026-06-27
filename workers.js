@@ -4,8 +4,9 @@ window.loadWorkers = async function() {
   const { data, error } = await supabase
     .from('worker_master')
     .select('*')
-    .eq('is_active', true)
+    .order('is_active', { ascending: false })
     .order('sort_order')
+    .order('name')
 
   const list = document.getElementById('worker_list')
   list.innerHTML = ''
@@ -35,21 +36,39 @@ window.loadWorkers = async function() {
     name.className = 'worker-name'
     name.textContent = worker.name
 
+    const status = document.createElement('span')
+    status.className = worker.is_active ? 'worker-status active' : 'worker-status inactive'
+    status.textContent = worker.is_active ? '使用中' : '非表示'
+
+    const text = document.createElement('div')
+    text.className = 'worker-text'
+    text.append(name, status)
+
     const actions = document.createElement('div')
     actions.className = 'worker-actions'
 
-    const editButton = document.createElement('button')
-    editButton.className = 'icon-btn edit-btn'
-    editButton.textContent = '編集'
-    editButton.addEventListener('click', () => editWorker(worker.id, worker.name))
+    if (worker.is_active) {
+      const editButton = document.createElement('button')
+      editButton.className = 'icon-btn edit-btn'
+      editButton.textContent = '編集'
+      editButton.addEventListener('click', () => editWorker(worker.id, worker.name))
 
-    const deleteButton = document.createElement('button')
-    deleteButton.className = 'icon-btn delete-btn'
-    deleteButton.textContent = '削除'
-    deleteButton.addEventListener('click', () => deleteWorker(worker.id))
+      const deleteButton = document.createElement('button')
+      deleteButton.className = 'icon-btn delete-btn'
+      deleteButton.textContent = '削除'
+      deleteButton.addEventListener('click', () => deleteWorker(worker.id, worker.name))
 
-    actions.append(editButton, deleteButton)
-    item.append(name, actions)
+      actions.append(editButton, deleteButton)
+    } else {
+      const restoreButton = document.createElement('button')
+      restoreButton.className = 'icon-btn restore-btn'
+      restoreButton.textContent = '復活'
+      restoreButton.addEventListener('click', () => restoreWorker(worker.id, worker.name))
+
+      actions.appendChild(restoreButton)
+    }
+
+    item.append(text, actions)
     list.appendChild(item)
   })
 }
@@ -93,8 +112,8 @@ window.editWorker = async function(id, oldName) {
   }
 }
 
-window.deleteWorker = async function(id) {
-  if (!confirm('この作業者を削除しますか？')) return
+window.deleteWorker = async function(id, name) {
+  if (!confirm(`${name} さんを非表示にしますか？\n\n過去の工数データは残ります。`)) return
 
   const { error } = await supabase
     .from('worker_master')
@@ -106,6 +125,23 @@ window.deleteWorker = async function(id) {
     showMessage('❌ 削除に失敗しました', 'error')
   } else {
     showMessage('✅ 削除しました', 'success')
+    window.loadWorkers()
+  }
+}
+
+window.restoreWorker = async function(id, name) {
+  if (!confirm(`${name} さんを作業者一覧に戻しますか？`)) return
+
+  const { error } = await supabase
+    .from('worker_master')
+    .update({ is_active: true })
+    .eq('id', id)
+
+  if (error) {
+    console.error('作業者の復活に失敗しました', error)
+    showMessage('❌ 復活に失敗しました', 'error')
+  } else {
+    showMessage('✅ 復活しました', 'success')
     window.loadWorkers()
   }
 }

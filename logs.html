@@ -26,6 +26,17 @@
         <input type="date" id="date_to">
       </div>
     </div>
+    <div class="summary-filters">
+      <select id="filter_worker" onchange="loadLogs()">
+        <option value="">全作業者</option>
+      </select>
+      <select id="filter_work_type" onchange="loadLogs()">
+        <option value="">全作業内容</option>
+      </select>
+      <select id="filter_seiban" onchange="loadLogs()">
+        <option value="">全製番</option>
+      </select>
+    </div>
 
     <button onclick="loadLogs()">表示する</button>
     <div id="log_list" class="log-list"></div>
