@@ -190,6 +190,34 @@ h2 {
   gap: 10px;
 }
 
+.admin-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.count-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  text-align: center;
+}
+
+.count-card strong {
+  color: #2c7be5;
+  font-size: 22px;
+}
+
+.count-card span {
+  color: #666;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .admin-menu a,
 .master-item {
   display: grid;
@@ -312,6 +340,7 @@ h2 {
   .button-row,
   .log-actions,
   .summary-filters,
+  .admin-counts,
   .master-item,
   .master-actions,
   .add-form {

@@ -16,6 +16,26 @@
       <a href="logs.html">履歴編集</a>
     </nav>
 
+    <div id="admin_counts" class="admin-counts" aria-label="登録件数">
+      <div class="count-card">
+        <strong id="count_workers">--</strong>
+        <span>作業者</span>
+      </div>
+      <div class="count-card">
+        <strong id="count_work_types">--</strong>
+        <span>作業内容</span>
+      </div>
+      <div class="count-card">
+        <strong id="count_seibans">--</strong>
+        <span>製番</span>
+      </div>
+      <div class="count-card">
+        <strong id="count_logs">--</strong>
+        <span>工数記録</span>
+      </div>
+    </div>
+    <div id="admin_status" class="status-text"></div>
+
     <div class="admin-menu">
       <a href="workers.html">
         <strong>作業者管理</strong>
@@ -31,5 +51,7 @@
       </a>
     </div>
   </div>
+
+  <script src="admin.js" type="module"></script>
 </body>
 </html>
