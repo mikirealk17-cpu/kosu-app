@@ -166,23 +166,6 @@ button:active {
   line-height: 1.6;
 }
 
-.quick-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.quick-buttons button {
-  min-height: 40px;
-  margin-top: 0;
-  padding: 8px;
-  border: 1px solid #b8d4f8;
-  background: #fff;
-  color: #2c7be5;
-  font-size: 14px;
-}
-
 h2 {
   font-size: 18px;
   margin-bottom: 16px;
@@ -331,8 +314,7 @@ h2 {
   .summary-filters,
   .master-item,
   .master-actions,
-  .add-form,
-  .quick-buttons {
+  .add-form {
     grid-template-columns: 1fr;
   }
 
