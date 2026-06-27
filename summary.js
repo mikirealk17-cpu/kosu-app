@@ -56,10 +56,12 @@ window.loadData = async function() {
     console.error('集計データの取得に失敗しました', error)
     const message = error?.message ? `データの取得に失敗しました: ${escapeHtml(error.message)}` : 'データの取得に失敗しました'
     document.getElementById('summary_table').innerHTML = `<p>${message}</p>`
+    renderSummaryMetrics([])
     setSummaryStatus('集計の取得に失敗しました')
     return
   }
 
+  renderSummaryMetrics(data)
   if (currentTab === 'seiban') renderSeiban(data)
   if (currentTab === 'seiban_detail') {
     await loadWorkerNameMap()
@@ -493,13 +495,37 @@ async function loadWorkerSummary() {
   if (error || !data) {
     console.error('作業者別集計データの取得に失敗しました', error)
     document.getElementById('summary_table').innerHTML = '<p>作業者別集計には、Supabase側でworker_masterとwork_logs.worker_idの設定が必要です</p>'
+    renderSummaryMetrics([])
     setSummaryStatus('作業者別集計の取得に失敗しました')
     return
   }
 
   await loadWorkerNameMap()
+  renderSummaryMetrics(data)
   renderWorker(data)
   setSummaryStatus(`${data.length}件のデータを表示しました`)
+}
+
+function renderSummaryMetrics(data) {
+  const totalMinutes = data.reduce((sum, row) => sum + (row.actual_minutes || 0), 0)
+  const recordCount = data.length
+  const averageMinutes = recordCount ? Math.round(totalMinutes / recordCount) : 0
+  const workerCount = new Set(data.map(row => row.worker_id).filter(Boolean)).size
+
+  const cards = [
+    { label: '総実働時間', value: minutesToHM(totalMinutes), note: '期間内の合計' },
+    { label: '入力件数', value: `${recordCount}件`, note: '保存済み工数' },
+    { label: '平均実働', value: minutesToHM(averageMinutes), note: '1件あたり' },
+    { label: '作業者数', value: `${workerCount}人`, note: '期間内に入力あり' }
+  ]
+
+  document.getElementById('summary_metrics').innerHTML = cards.map(card => `
+    <article class="metric-card">
+      <span>${escapeHtml(card.label)}</span>
+      <strong>${escapeHtml(card.value)}</strong>
+      <small>${escapeHtml(card.note)}</small>
+    </article>
+  `).join('')
 }
 
 function renderSeiban(data) {

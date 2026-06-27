@@ -8,8 +8,14 @@
 </head>
 <body>
 
-  <div class="container">
-    <h1>工数入力</h1>
+  <div class="container app-shell">
+    <header class="screen-header">
+      <div>
+        <p class="screen-kicker">Kosu Tracker</p>
+        <h1>工数入力</h1>
+      </div>
+      <span class="screen-badge">入力優先</span>
+    </header>
 
     <nav class="page-links" aria-label="画面移動">
       <a href="summary.html">集計画面</a>
@@ -17,63 +23,78 @@
       <a href="admin.html">管理画面</a>
     </nav>
 
-    <div class="form-group">
-      <label>日付</label>
-      <input type="date" id="work_date">
-    </div>
+    <main class="panel entry-panel">
+      <div class="panel-header">
+        <div>
+          <h2>今日の作業</h2>
+          <p>作業者、製番、時間を上から順に入力します。</p>
+        </div>
+      </div>
 
-    <div class="form-group">
-      <label>作業者</label>
-      <select id="worker"></select>
-    </div>
-    <div class="form-group">
-      <label>製番</label>
-      <input type="text" id="seiban" placeholder="例: A001" oninput="searchSeiban()">
-      <span id="seiban_status"></span>
-    </div>
+      <div class="field-grid two-columns">
+        <div class="form-group">
+          <label>作業者</label>
+          <select id="worker"></select>
+        </div>
+        <div class="form-group">
+          <label>日付</label>
+          <input type="date" id="work_date">
+        </div>
+      </div>
 
-    <div class="form-group">
-      <label>設備名</label>
-      <input type="text" id="equipment_name" placeholder="製番を入力すると自動表示">
-    </div>
+      <div class="form-group">
+        <label>製番</label>
+        <input type="text" id="seiban" placeholder="例: A001" oninput="searchSeiban()">
+        <span id="seiban_status"></span>
+      </div>
 
-    <div class="form-group">
-      <label>作業内容</label>
-      <select id="work_type"></select>
-    </div>
+      <div class="form-group">
+        <label>設備名</label>
+        <input type="text" id="equipment_name" placeholder="製番を入力すると自動表示">
+      </div>
 
-    <div class="form-group">
-      <label>開始時間</label>
-      <input type="text" id="start_time" inputmode="numeric" pattern="[0-9]*" placeholder="例: 8 / 0800">
-    </div>
+      <div class="form-group">
+        <label>作業内容</label>
+        <select id="work_type"></select>
+      </div>
 
-    <div class="form-group">
-      <label>終了時間</label>
-      <input type="text" id="end_time" inputmode="numeric" pattern="[0-9]*" placeholder="例: 17 / 1730">
-    </div>
+      <div class="field-grid two-columns">
+        <div class="form-group">
+          <label>開始時間</label>
+          <input type="text" id="start_time" inputmode="numeric" pattern="[0-9]*" placeholder="例: 8 / 0800">
+        </div>
 
-    <div class="form-group">
-      <label>休憩① (分)</label>
-      <input type="text" id="break1" inputmode="numeric" pattern="[0-9]*" placeholder="例: 60">
-    </div>
+        <div class="form-group">
+          <label>終了時間</label>
+          <input type="text" id="end_time" inputmode="numeric" pattern="[0-9]*" placeholder="例: 17 / 1730">
+        </div>
+      </div>
 
-    <div class="form-group">
-      <label>休憩② (分)</label>
-      <input type="text" id="break2" inputmode="numeric" pattern="[0-9]*" placeholder="例: 0">
-    </div>
+      <div class="field-grid two-columns">
+        <div class="form-group">
+          <label>休憩① (分)</label>
+          <input type="text" id="break1" inputmode="numeric" pattern="[0-9]*" placeholder="例: 60">
+        </div>
 
-    <div class="form-group">
-      <label>実働時間</label>
-      <div id="actual_time" class="actual-time">--時間--分</div>
-    </div>
+        <div class="form-group">
+          <label>休憩② (分)</label>
+          <input type="text" id="break2" inputmode="numeric" pattern="[0-9]*" placeholder="例: 0">
+        </div>
+      </div>
 
-    <div class="form-group">
-      <label>備考</label>
-      <textarea id="note" rows="3" placeholder="任意"></textarea>
-    </div>
+      <div class="form-group">
+        <label>実働時間</label>
+        <div id="actual_time" class="actual-time">--時間--分</div>
+      </div>
 
-    <button onclick="saveLog()">保存する</button>
-    <div id="message"></div>
+      <div class="form-group">
+        <label>備考</label>
+        <textarea id="note" rows="3" placeholder="任意"></textarea>
+      </div>
+
+      <button class="primary-action" onclick="saveLog()">保存する</button>
+      <div id="message"></div>
+    </main>
   </div>
 
   <script src="app.js" type="module"></script>

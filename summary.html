@@ -5,132 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>工数集計</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    .tab-buttons {
-      display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-    .tab-btn {
-      width: 100%;
-      padding: 10px;
-      border: 2px solid #2c7be5;
-      background: white;
-      color: #2c7be5;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top: 0;
-      white-space: nowrap;
-    }
-    .tab-btn.active {
-      background: #2c7be5;
-      color: white;
-    }
-    .period-select {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    .period-select input {
-      min-width: 0;
-    }
-    .csv-actions {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .csv-actions button {
-      width: auto;
-      margin-top: 0;
-      padding: 12px 16px;
-      font-size: 15px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border-radius: 8px;
-      overflow: hidden;
-      table-layout: fixed;
-    }
-    th {
-      background: #2c7be5;
-      color: white;
-      padding: 12px;
-      text-align: left;
-      font-size: 14px;
-    }
-    td {
-      padding: 12px;
-      border-bottom: 1px solid #eee;
-      font-size: 15px;
-      overflow-wrap: anywhere;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    .total-row td {
-      font-weight: bold;
-      background: #f0f7ff;
-      color: #2c7be5;
-    }
-    .back-btn {
-      display: block;
-      text-align: center;
-      padding: 12px;
-      background: #6c757d;
-      color: white;
-      border-radius: 8px;
-      text-decoration: none;
-      margin-bottom: 20px;
-      font-weight: bold;
-    }
-    #summary_table {
-      max-width: 100%;
-      overflow-x: auto;
-    }
-    @media (max-width: 480px) {
-      .tab-buttons {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .tab-btn {
-        font-size: 14px;
-        padding: 10px 6px;
-      }
-      .period-select {
-        grid-template-columns: 1fr;
-      }
-      .period-select span {
-        display: none;
-      }
-      .period-select button {
-        width: 100% !important;
-        margin-top: 0;
-      }
-      .csv-actions {
-        grid-template-columns: 1fr;
-      }
-      .csv-actions button {
-        width: 100%;
-      }
-      th,
-      td {
-        padding: 10px 8px;
-        font-size: 13px;
-      }
-    }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>工数集計</h1>
+  <div class="container dashboard-shell">
+    <header class="screen-header">
+      <div>
+        <p class="screen-kicker">Kosu Analytics</p>
+        <h1>工数集計</h1>
+      </div>
+      <span class="screen-badge">分析</span>
+    </header>
 
     <nav class="page-links" aria-label="画面移動">
       <a href="index.html">工数入力</a>
@@ -138,43 +22,63 @@
       <a href="admin.html">管理画面</a>
     </nav>
 
-    <div class="tab-buttons">
-      <button class="tab-btn active" onclick="switchTab('seiban')">製番別</button>
-      <button class="tab-btn" onclick="switchTab('seiban_detail')">製番明細</button>
-      <button class="tab-btn" onclick="switchTab('equipment')">設備別</button>
-      <button class="tab-btn" onclick="switchTab('daily')">日別</button>
-      <button class="tab-btn" onclick="switchTab('monthly')">月別</button>
-      <button class="tab-btn" onclick="switchTab('worker_daily')">作業者日別</button>
-      <button class="tab-btn" onclick="switchTab('worker')">作業者別</button>
-    </div>
+    <main class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>集計条件</h2>
+          <p>期間と絞り込みを選ぶと、下の集計が更新されます。</p>
+        </div>
+      </div>
 
-    <div class="period-select">
-      <input type="date" id="date_from">
-      <span>〜</span>
-      <input type="date" id="date_to">
-      <button onclick="loadData()" style="width:auto; padding: 12px 16px;">集計を表示</button>
-    </div>
-    <div class="summary-filters">
-      <select id="filter_worker" onchange="loadData()">
-        <option value="">全作業者</option>
-      </select>
-      <select id="filter_work_type" onchange="loadData()">
-        <option value="">全作業内容</option>
-      </select>
-      <select id="filter_seiban" onchange="loadData()">
-        <option value="">全製番</option>
-      </select>
-    </div>
-    <div id="summary_status" class="status-text"></div>
-    <div class="csv-actions">
-      <select id="csv_type" aria-label="CSVの種類">
-        <option value="detail">明細CSV</option>
-        <option value="summary">集計CSV</option>
-      </select>
-      <button class="secondary-btn" onclick="exportCsv()">CSV出力</button>
-    </div>
+      <div class="tab-buttons" role="tablist" aria-label="集計の種類">
+        <button class="tab-btn active" onclick="switchTab('seiban')">製番別</button>
+        <button class="tab-btn" onclick="switchTab('seiban_detail')">製番明細</button>
+        <button class="tab-btn" onclick="switchTab('equipment')">設備別</button>
+        <button class="tab-btn" onclick="switchTab('daily')">日別</button>
+        <button class="tab-btn" onclick="switchTab('monthly')">月別</button>
+        <button class="tab-btn" onclick="switchTab('worker_daily')">作業者日別</button>
+        <button class="tab-btn" onclick="switchTab('worker')">作業者別</button>
+      </div>
 
-    <div id="summary_table"></div>
+      <div class="period-select">
+        <input type="date" id="date_from" aria-label="開始日">
+        <span>〜</span>
+        <input type="date" id="date_to" aria-label="終了日">
+        <button class="compact-action" onclick="loadData()">集計を表示</button>
+      </div>
+      <div class="summary-filters">
+        <select id="filter_worker" onchange="loadData()">
+          <option value="">全作業者</option>
+        </select>
+        <select id="filter_work_type" onchange="loadData()">
+          <option value="">全作業内容</option>
+        </select>
+        <select id="filter_seiban" onchange="loadData()">
+          <option value="">全製番</option>
+        </select>
+      </div>
+      <div id="summary_status" class="status-text"></div>
+    </main>
+
+    <section id="summary_metrics" class="metric-grid" aria-label="集計の概要"></section>
+
+    <section class="panel">
+      <div class="panel-header table-header">
+        <div>
+          <h2>集計結果</h2>
+          <p>選択中のタブに合わせて内容が変わります。</p>
+        </div>
+        <div class="csv-actions">
+          <select id="csv_type" aria-label="CSVの種類">
+            <option value="detail">明細CSV</option>
+            <option value="summary">集計CSV</option>
+          </select>
+          <button class="secondary-btn compact-action" onclick="exportCsv()">CSV出力</button>
+        </div>
+      </div>
+
+      <div id="summary_table"></div>
+    </section>
   </div>
 
   <script src="summary.js" type="module"></script>
