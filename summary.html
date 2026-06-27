@@ -8,7 +8,7 @@
   <style>
     .tab-buttons {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 8px;
       margin-bottom: 20px;
     }
@@ -121,6 +121,7 @@
 
     <div class="tab-buttons">
       <button class="tab-btn active" onclick="switchTab('seiban')">製番別</button>
+      <button class="tab-btn" onclick="switchTab('seiban_detail')">製番明細</button>
       <button class="tab-btn" onclick="switchTab('equipment')">設備別</button>
       <button class="tab-btn" onclick="switchTab('daily')">日別</button>
       <button class="tab-btn" onclick="switchTab('monthly')">月別</button>

@@ -33,6 +33,9 @@ window.loadData = async function() {
       actual_minutes,
       work_date,
       worker_id,
+      start_time,
+      end_time,
+      note,
       seiban_master (
         seiban,
         equipment_name
@@ -58,6 +61,10 @@ window.loadData = async function() {
   }
 
   if (currentTab === 'seiban') renderSeiban(data)
+  if (currentTab === 'seiban_detail') {
+    await loadWorkerNameMap()
+    renderSeibanDetail(data)
+  }
   if (currentTab === 'equipment') renderEquipment(data)
   if (currentTab === 'daily') renderDaily(data)
   if (currentTab === 'monthly') renderMonthly(data)
@@ -324,6 +331,33 @@ function renderSeiban(data) {
     total += val.minutes
   })
   html += `<tr class="total-row"><td colspan="2">合計</td><td>${minutesToHM(total)}</td></tr>`
+  html += '</table>'
+  document.getElementById('summary_table').innerHTML = html
+}
+
+function renderSeibanDetail(data) {
+  let html = '<table><tr><th>日付</th><th>製番</th><th>作業者</th><th>時間</th><th>工数</th></tr>'
+  let total = 0
+
+  data.forEach(row => {
+    const seiban = row.seiban_master?.seiban || '不明'
+    const equipment = row.seiban_master?.equipment_name || '不明'
+    const worker = workerNameMap[row.worker_id] || '作業者未設定'
+    const time = `${formatTime(row.start_time)}-${formatTime(row.end_time)}`
+    const minutes = row.actual_minutes || 0
+    html += `
+      <tr>
+        <td>${escapeHtml(row.work_date)}</td>
+        <td>${escapeHtml(seiban)}<br>${escapeHtml(equipment)}</td>
+        <td>${escapeHtml(worker)}</td>
+        <td>${escapeHtml(time)}</td>
+        <td>${minutesToHM(minutes)}</td>
+      </tr>
+    `
+    total += minutes
+  })
+
+  html += `<tr class="total-row"><td colspan="4">合計</td><td>${minutesToHM(total)}</td></tr>`
   html += '</table>'
   document.getElementById('summary_table').innerHTML = html
 }
