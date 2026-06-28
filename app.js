@@ -1,7 +1,9 @@
 import { supabase } from './supabaseClient.js'
 
 let workerFeatureEnabled = false
+let billingCompanyFeatureEnabled = false
 let messageTimer = null
+const LAST_BILLING_COMPANY_KEY_PREFIX = 'kosu_last_billing_company_'
 
 // 今日の日付をセットします。toISOString()はUTC基準なので、日本時間では日付がずれることがあります。
 document.getElementById('work_date').value = formatDate(new Date())
@@ -151,6 +153,7 @@ function timeToMinutes(time) {
 // 保存する
 async function saveLog() {
   const workerId = document.getElementById('worker').value
+  const billingCompanyId = document.getElementById('billing_company').value
   const seiban = document.getElementById('seiban').value.trim()
   const equipmentName = document.getElementById('equipment_name').value.trim()
   const workTypeId = document.getElementById('work_type').value
@@ -168,6 +171,11 @@ async function saveLog() {
 
   if (workerFeatureEnabled && !workerId) {
     showMessage('⚠️ 必須項目を入力してください', 'error')
+    return
+  }
+
+  if (billingCompanyFeatureEnabled && !billingCompanyId) {
+    showMessage('⚠️ 作業会社を選択してください', 'error')
     return
   }
 
@@ -234,6 +242,11 @@ async function saveLog() {
     logData.worker_id = workerId
   }
 
+  // DB側にbilling_company_id列がある場合だけ、入力時点の作業会社を保存します。
+  if (billingCompanyFeatureEnabled) {
+    logData.billing_company_id = billingCompanyId
+  }
+
   const { error } = await supabase
     .from('work_logs')
     .insert(logData)
@@ -242,6 +255,7 @@ async function saveLog() {
     console.error('工数の保存に失敗しました', error)
     showMessage('❌ 保存に失敗しました', 'error')
   } else {
+    rememberBillingCompany(workerId, billingCompanyId)
     showMessage('✓ 保存しました', 'success')
     resetFormForNextInput()
   }
@@ -329,6 +343,9 @@ document.getElementById('start_time').addEventListener('blur', () => formatTimeF
 document.getElementById('end_time').addEventListener('blur', () => formatTimeField('end_time'))
 document.getElementById('break1').addEventListener('input', () => handleNumericInput('break1'))
 document.getElementById('break2').addEventListener('input', () => handleNumericInput('break2'))
+document.getElementById('worker').addEventListener('change', () => {
+  applyLastBillingCompany(document.getElementById('worker').value)
+})
 
 window.searchSeiban = searchSeiban
 window.saveLog = saveLog
@@ -369,5 +386,101 @@ async function loadWorkers() {
   })
 }
 
+async function loadBillingCompanies() {
+  const select = document.getElementById('billing_company')
+  select.innerHTML = ''
+
+  const emptyOption = document.createElement('option')
+  emptyOption.value = ''
+  emptyOption.textContent = '作業会社を選択'
+  select.appendChild(emptyOption)
+
+  const { error: columnError } = await supabase
+    .from('work_logs')
+    .select('billing_company_id')
+    .limit(1)
+
+  if (columnError) {
+    console.error('作業会社列の確認に失敗しました', columnError)
+    billingCompanyFeatureEnabled = false
+    select.disabled = true
+    emptyOption.textContent = '作業会社DB未設定'
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('billing_company_master')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
+    .order('name')
+
+  if (error || !data) {
+    console.error('作業会社一覧の取得に失敗しました', error)
+    billingCompanyFeatureEnabled = false
+    select.disabled = true
+    emptyOption.textContent = '作業会社DB未設定'
+    return
+  }
+
+  if (data.length === 0) {
+    billingCompanyFeatureEnabled = false
+    select.disabled = true
+    emptyOption.textContent = '作業会社を登録してください'
+    return
+  }
+
+  billingCompanyFeatureEnabled = true
+  select.disabled = false
+
+  data.forEach(company => {
+    const option = document.createElement('option')
+    option.value = company.id
+    option.textContent = company.name
+    select.appendChild(option)
+  })
+
+  applyLastBillingCompany(document.getElementById('worker').value)
+}
+
+async function applyLastBillingCompany(workerId) {
+  if (!billingCompanyFeatureEnabled) return
+
+  const select = document.getElementById('billing_company')
+  select.value = ''
+  if (!workerId) return
+
+  const savedCompanyId = localStorage.getItem(`${LAST_BILLING_COMPANY_KEY_PREFIX}${workerId}`)
+  if (savedCompanyId && hasBillingCompanyOption(savedCompanyId)) {
+    select.value = savedCompanyId
+  }
+
+  const { data, error } = await supabase
+    .from('work_logs')
+    .select('billing_company_id')
+    .eq('worker_id', workerId)
+    .not('billing_company_id', 'is', null)
+    .order('work_date', { ascending: false })
+    .limit(1)
+
+  if (error || !data || data.length === 0) return
+
+  const companyId = data[0].billing_company_id
+  if (companyId && hasBillingCompanyOption(companyId)) {
+    select.value = companyId
+  }
+}
+
+function hasBillingCompanyOption(companyId) {
+  const select = document.getElementById('billing_company')
+  return Array.from(select.options).some(option => option.value === companyId)
+}
+
+function rememberBillingCompany(workerId, billingCompanyId) {
+  if (!workerId || !billingCompanyId) return
+  localStorage.setItem(`${LAST_BILLING_COMPANY_KEY_PREFIX}${workerId}`, billingCompanyId)
+}
+
 loadWorkTypes()
 loadWorkers()
+loadBillingCompanies()

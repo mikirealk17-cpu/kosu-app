@@ -22,6 +22,7 @@
 - `logs.html`: 入力履歴編集画面
 - `admin.html`: 管理画面
 - `workers.html`: 作業者管理画面
+- `billing-companies.html`: 作業会社管理画面
 - `work-types.html`: 作業内容マスタ管理画面
 - `seibans.html`: 製番マスタ管理画面
 
@@ -31,15 +32,21 @@
 - `work_type_master`: 作業内容マスタ
 - `work_logs`: 工数記録
 - `worker_master`: 作業者マスタ
+- `billing_company_master`: 作業会社マスタ
 
 2026-06-26時点のAPI確認では、現在接続中のSupabaseに `worker_master` と `work_logs.worker_id` はまだ反映されていません。
 作業者対応を有効にするには、`SUPABASE_SETUP.sql` をSupabase SQL Editorで実行してください。
+作業会社対応も同じSQLに含めています。実行すると `billing_company_master` と `work_logs.billing_company_id` が追加されます。
 
 SQL実行後の動き:
 
 - `workers.html` で作業者を追加する
+- `billing-companies.html` で作業会社を追加する
 - `index.html` で作業者を選んで工数を保存する
+- `index.html` で作業会社を選ぶと、工数1件ごとに作業会社が保存される
+- 作業者を選ぶと、その作業者で前回使った作業会社が自動で選ばれる
 - `work_logs.worker_id` に選択した作業者IDが保存される
+- `work_logs.billing_company_id` に選択した作業会社IDが保存される
 - `summary.html` の作業者別タブで作業者ごとの工数を確認する
 
 ## Supabase利用方針
@@ -59,6 +66,7 @@ Supabase側でRLSを有効にし、公開利用者に許可する操作を明確
 現在の運用方針:
 
 - `worker_master`: 表示、追加、編集、非表示化を許可
+- `billing_company_master`: 表示、追加、編集、非表示化を許可
 - `work_logs`: 表示、追加、編集、削除を許可
 - `work_type_master`: 表示、追加、編集、非表示化を許可
 - `seiban_master`: 表示、追加、編集、削除を許可
