@@ -210,6 +210,10 @@ window.exportCsv = async function() {
     await exportSummaryCsv()
     return
   }
+  if (csvType === 'worker_equipment') {
+    await exportWorkerEquipmentCsv()
+    return
+  }
 
   await exportDetailCsv()
 }
@@ -317,6 +321,24 @@ async function exportSummaryCsv() {
   await loadWorkerNameMap()
   const { headers, rows } = createSummaryCsvRows(data)
   downloadCsv(headers, rows, `kosu_summary_${currentTab}_${from}_${to}.csv`)
+}
+
+async function exportWorkerEquipmentCsv() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  let data
+
+  try {
+    data = await fetchSummaryRows()
+  } catch (error) {
+    console.error('作業者別設備CSV出力データの取得に失敗しました', error)
+    alert('作業者別設備CSV出力データの取得に失敗しました')
+    return
+  }
+
+  await loadWorkerNameMap()
+  const { headers, rows } = createWorkerEquipmentSummaryRows(data, from, to)
+  downloadCsv(headers, rows, `kosu_worker_equipment_${from}_${to}.csv`)
 }
 
 function downloadCsv(headers, rows, filename) {
@@ -474,6 +496,53 @@ function createWorkerSummaryRows(data) {
       minutes,
       minutesToHM(minutes)
     ])
+  }
+}
+
+function createWorkerEquipmentSummaryRows(data, from, to) {
+  const map = {}
+  data.forEach(row => {
+    const worker = workerNameMap[row.worker_id] || '作業者未設定'
+    const seiban = row.seiban_master?.seiban || '不明'
+    const equipment = row.seiban_master?.equipment_name || '不明'
+    const key = `${worker}__${seiban}__${equipment}`
+
+    if (!map[key]) {
+      map[key] = {
+        from,
+        to,
+        worker,
+        seiban,
+        equipment,
+        count: 0,
+        minutes: 0
+      }
+    }
+
+    map[key].count += 1
+    map[key].minutes += row.actual_minutes || 0
+  })
+
+  const rows = Object.values(map)
+    .sort((a, b) => (
+      a.worker.localeCompare(b.worker, 'ja') ||
+      a.seiban.localeCompare(b.seiban, 'ja') ||
+      a.equipment.localeCompare(b.equipment, 'ja')
+    ))
+    .map(row => [
+      row.from,
+      row.to,
+      row.worker,
+      row.seiban,
+      row.equipment,
+      row.count,
+      row.minutes,
+      minutesToHM(row.minutes)
+    ])
+
+  return {
+    headers: ['開始日', '終了日', '作業者', '設備番号(製番)', '設備名', '件数', '実働分', '実働時間'],
+    rows
   }
 }
 

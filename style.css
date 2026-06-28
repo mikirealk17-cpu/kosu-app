@@ -354,6 +354,12 @@ button:active {
   margin-bottom: 16px;
   overflow-x: auto;
   padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tab-buttons::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-btn {
@@ -430,7 +436,7 @@ button:active {
 
 .csv-actions {
   display: grid;
-  grid-template-columns: minmax(0, 150px) auto;
+  grid-template-columns: minmax(0, 190px) auto;
   gap: 8px;
   align-items: center;
 }
@@ -743,8 +749,14 @@ tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .page-links {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .page-links a {
     min-height: 46px;
+    padding: 9px 8px;
+    font-size: 13px;
   }
 
   .period-select {
@@ -806,6 +818,10 @@ tr:last-child td {
 @media (max-width: 480px) {
   .screen-badge {
     display: none;
+  }
+
+  .screen-header {
+    gap: 8px;
   }
 
   .metric-grid {
