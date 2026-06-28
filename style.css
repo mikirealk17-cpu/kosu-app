@@ -788,6 +788,11 @@ tr:last-child td {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .time-input-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
   .page-links a {
     min-height: 46px;
     padding: 9px 8px;
@@ -915,6 +920,15 @@ tr:last-child td {
 
   .screen-header {
     gap: 8px;
+  }
+
+  .time-input-grid {
+    gap: 8px;
+  }
+
+  .time-input-grid input {
+    padding-right: 10px;
+    padding-left: 10px;
   }
 
   .metric-grid {
