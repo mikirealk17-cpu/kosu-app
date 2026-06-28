@@ -127,6 +127,7 @@ npx serve .
 作業者対応には、Supabase側に `worker_master` テーブルと `work_logs.worker_id` 列が必要です。
 作業会社対応には、`billing_company_master` テーブルと `work_logs.billing_company_id` 列が必要です。
 設定SQLは `SUPABASE_SETUP.sql` にまとめています。
+作業会社対応だけを追加したい場合は、`SUPABASE_BILLING_COMPANY_SETUP.sql` を実行してください。
 SQL実行後に画面を再読み込みすると、工数入力画面の作業者プルダウンが有効になります。
 作業会社テーブルも作成済みの場合は、`billing-companies.html` で作業会社を登録し、工数入力時に作業会社を選べます。
 作業会社は作業者マスタに固定せず、工数1件ごとに `work_logs.billing_company_id` として保存します。

@@ -37,6 +37,8 @@
 2026-06-26時点のAPI確認では、現在接続中のSupabaseに `worker_master` と `work_logs.worker_id` はまだ反映されていません。
 作業者対応を有効にするには、`SUPABASE_SETUP.sql` をSupabase SQL Editorで実行してください。
 作業会社対応も同じSQLに含めています。実行すると `billing_company_master` と `work_logs.billing_company_id` が追加されます。
+作業会社対応だけを追加する場合は、`SUPABASE_BILLING_COMPANY_SETUP.sql` を実行します。
+このSQLは既存の工数データを更新・削除せず、空欄を許可する追加列だけを作ります。
 
 SQL実行後の動き:
 
