@@ -38,6 +38,7 @@
         <button class="tab-btn" onclick="switchTab('monthly')">月別</button>
         <button class="tab-btn" onclick="switchTab('worker_daily')">作業者日別</button>
         <button class="tab-btn" onclick="switchTab('worker')">作業者別</button>
+        <button class="tab-btn" onclick="switchTab('billing_company')">作業会社別</button>
       </div>
 
       <div class="period-select">
@@ -73,6 +74,7 @@
             <option value="detail">明細CSV</option>
             <option value="summary">集計CSV</option>
             <option value="worker_equipment">作業者別設備CSV</option>
+            <option value="billing_company">作業会社別CSV</option>
           </select>
           <button class="secondary-btn compact-action" onclick="exportCsv()">CSV出力</button>
         </div>

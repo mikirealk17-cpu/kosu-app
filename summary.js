@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient.js'
 
 let currentTab = 'seiban'
 let workerNameMap = {}
+let billingCompanyNameMap = {}
 
 const today = new Date()
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -20,6 +21,11 @@ window.loadData = async function() {
 
   if (currentTab === 'worker') {
     await loadWorkerSummary()
+    return
+  }
+
+  if (currentTab === 'billing_company') {
+    await loadBillingCompanySummary()
     return
   }
 
@@ -140,6 +146,21 @@ async function loadWorkerNameMap() {
   })
 }
 
+async function loadBillingCompanyNameMap() {
+  const { data, error } = await supabase
+    .from('billing_company_master')
+    .select('id, name')
+
+  if (error || !data) {
+    throw error || new Error('作業会社一覧の取得に失敗しました')
+  }
+
+  billingCompanyNameMap = {}
+  data.forEach(company => {
+    billingCompanyNameMap[company.id] = company.name
+  })
+}
+
 async function loadFilterOptions() {
   await Promise.all([
     loadWorkerOptions(),
@@ -220,6 +241,8 @@ window.exportCsv = async function() {
       success = await exportSummaryCsv()
     } else if (csvType === 'worker_equipment') {
       success = await exportWorkerEquipmentCsv()
+    } else if (csvType === 'billing_company') {
+      success = await exportBillingCompanyCsv()
     } else {
       success = await exportDetailCsv()
     }
@@ -329,14 +352,21 @@ async function exportSummaryCsv() {
   let data
 
   try {
-    data = await fetchSummaryRows()
+    if (currentTab === 'billing_company') {
+      data = await fetchBillingCompanyRows()
+      await loadBillingCompanyNameMap()
+    } else {
+      data = await fetchSummaryRows()
+    }
   } catch (error) {
     console.error('集計CSV出力データの取得に失敗しました', error)
     alert('集計CSV出力データの取得に失敗しました')
     return false
   }
 
-  await loadWorkerNameMap()
+  if (currentTab !== 'billing_company') {
+    await loadWorkerNameMap()
+  }
   const { headers, rows } = createSummaryCsvRows(data)
   downloadCsv(headers, rows, `kosu_summary_${currentTab}_${from}_${to}.csv`)
   return true
@@ -358,6 +388,28 @@ async function exportWorkerEquipmentCsv() {
   await loadWorkerNameMap()
   const { headers, rows } = createWorkerEquipmentSummaryRows(data, from, to)
   downloadCsv(headers, rows, `kosu_worker_equipment_${from}_${to}.csv`)
+  return true
+}
+
+async function exportBillingCompanyCsv() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  let data
+
+  try {
+    data = await fetchBillingCompanyRows()
+    await Promise.all([
+      loadWorkerNameMap(),
+      loadBillingCompanyNameMap()
+    ])
+  } catch (error) {
+    console.error('作業会社別CSV出力データの取得に失敗しました', error)
+    alert('作業会社別CSVには、Supabase側で作業会社DB設定が必要です')
+    return false
+  }
+
+  const { headers, rows } = createBillingCompanyInvoiceRows(data, from, to)
+  downloadCsv(headers, rows, `kosu_billing_company_${from}_${to}.csv`)
   return true
 }
 
@@ -385,6 +437,7 @@ function createSummaryCsvRows(data) {
   if (currentTab === 'monthly') return createMonthlySummaryRows(data)
   if (currentTab === 'worker_daily') return createWorkerDailySummaryRows(data)
   if (currentTab === 'worker') return createWorkerSummaryRows(data)
+  if (currentTab === 'billing_company') return createBillingCompanySummaryRows(data)
   return { headers: ['項目', '工数'], rows: [] }
 }
 
@@ -566,6 +619,81 @@ function createWorkerEquipmentSummaryRows(data, from, to) {
   }
 }
 
+function createBillingCompanySummaryRows(data) {
+  const map = {}
+  data.forEach(row => {
+    const company = billingCompanyNameMap[row.billing_company_id] || '作業会社未設定'
+    if (!map[company]) map[company] = { count: 0, minutes: 0 }
+    map[company].count += 1
+    map[company].minutes += row.actual_minutes || 0
+  })
+
+  return {
+    headers: ['作業会社', '件数', '実働分', '実働時間'],
+    rows: Object.entries(map).map(([company, val]) => [
+      company,
+      val.count,
+      val.minutes,
+      minutesToHM(val.minutes)
+    ])
+  }
+}
+
+function createBillingCompanyInvoiceRows(data, from, to) {
+  const map = {}
+  data.forEach(row => {
+    const company = billingCompanyNameMap[row.billing_company_id] || '作業会社未設定'
+    const worker = workerNameMap[row.worker_id] || '作業者未設定'
+    const seiban = row.seiban_master?.seiban || '不明'
+    const equipment = row.seiban_master?.equipment_name || '不明'
+    const workType = row.work_type_master?.name || '不明'
+    const key = `${company}__${worker}__${seiban}__${equipment}__${workType}`
+
+    if (!map[key]) {
+      map[key] = {
+        from,
+        to,
+        company,
+        worker,
+        seiban,
+        equipment,
+        workType,
+        count: 0,
+        minutes: 0
+      }
+    }
+
+    map[key].count += 1
+    map[key].minutes += row.actual_minutes || 0
+  })
+
+  const rows = Object.values(map)
+    .sort((a, b) => (
+      a.company.localeCompare(b.company, 'ja') ||
+      a.worker.localeCompare(b.worker, 'ja') ||
+      a.seiban.localeCompare(b.seiban, 'ja') ||
+      a.workType.localeCompare(b.workType, 'ja')
+    ))
+    .map(row => [
+      row.from,
+      row.to,
+      row.company,
+      row.worker,
+      row.seiban,
+      row.equipment,
+      row.workType,
+      row.count,
+      row.minutes,
+      minutesToHM(row.minutes),
+      ''
+    ])
+
+  return {
+    headers: ['開始日', '終了日', '作業会社', '作業者', '設備番号(製番)', '設備名', '作業内容', '件数', '実働分', '実働時間', '請求メモ'],
+    rows
+  }
+}
+
 async function loadWorkerSummary() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
@@ -595,6 +723,56 @@ async function loadWorkerSummary() {
   setSummaryStatus(`${data.length}件のデータを表示しました`)
 }
 
+async function loadBillingCompanySummary() {
+  try {
+    const data = await fetchBillingCompanyRows()
+    await loadBillingCompanyNameMap()
+    renderSummaryMetrics(data)
+    renderBillingCompany(data)
+    setSummaryStatus(`${data.length}件のデータを表示しました`)
+  } catch (error) {
+    console.error('作業会社別集計データの取得に失敗しました', error)
+    document.getElementById('summary_table').innerHTML = '<p>作業会社別集計には、Supabase側で作業会社DB設定が必要です</p>'
+    renderSummaryMetrics([])
+    setSummaryStatus('作業会社別集計の取得に失敗しました')
+  }
+}
+
+async function fetchBillingCompanyRows() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  const filters = getFilters()
+
+  let query = supabase
+    .from('work_logs')
+    .select(`
+      actual_minutes,
+      work_date,
+      worker_id,
+      billing_company_id,
+      seiban_master (
+        seiban,
+        equipment_name
+      ),
+      work_type_master (
+        name
+      )
+    `)
+    .gte('work_date', from)
+    .lte('work_date', to)
+    .order('work_date')
+
+  query = applyFilters(query, filters)
+
+  const { data, error } = await query
+
+  if (error || !data) {
+    throw error || new Error('作業会社別集計データの取得に失敗しました')
+  }
+
+  return data
+}
+
 function renderSummaryMetrics(data) {
   const totalMinutes = data.reduce((sum, row) => sum + (row.actual_minutes || 0), 0)
   const recordCount = data.length
@@ -615,6 +793,30 @@ function renderSummaryMetrics(data) {
       <small>${escapeHtml(card.note)}</small>
     </article>
   `).join('')
+}
+
+function renderBillingCompany(data) {
+  const map = {}
+  data.forEach(row => {
+    const company = billingCompanyNameMap[row.billing_company_id] || '作業会社未設定'
+    if (!map[company]) {
+      map[company] = { count: 0, minutes: 0 }
+    }
+    map[company].count += 1
+    map[company].minutes += row.actual_minutes || 0
+  })
+
+  let html = '<table><tr><th>作業会社</th><th>件数</th><th>工数</th></tr>'
+  let totalMinutes = 0
+  let totalCount = 0
+  Object.entries(map).forEach(([company, val]) => {
+    html += `<tr><td>${escapeHtml(company)}</td><td>${val.count}件</td><td>${minutesToHM(val.minutes)}</td></tr>`
+    totalMinutes += val.minutes
+    totalCount += val.count
+  })
+  html += `<tr class="total-row"><td>合計</td><td>${totalCount}件</td><td>${minutesToHM(totalMinutes)}</td></tr>`
+  html += '</table>'
+  document.getElementById('summary_table').innerHTML = html
 }
 
 function renderSeiban(data) {
