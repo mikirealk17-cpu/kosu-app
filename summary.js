@@ -96,6 +96,10 @@ function minutesToHM(minutes) {
   return `${h}h${String(m).padStart(2, '0')}m`
 }
 
+function minutesToDecimalHours(minutes) {
+  return Math.round((minutes / 60) * 100) / 100
+}
+
 function formatTime(time) {
   return time ? time.slice(0, 5) : ''
 }
@@ -685,11 +689,14 @@ function createBillingCompanyInvoiceRows(data, from, to) {
       row.count,
       row.minutes,
       minutesToHM(row.minutes),
+      minutesToDecimalHours(row.minutes),
+      '',
+      '',
       ''
     ])
 
   return {
-    headers: ['開始日', '終了日', '作業会社', '作業者', '設備番号(製番)', '設備名', '作業内容', '件数', '実働分', '実働時間', '請求メモ'],
+    headers: ['開始日', '終了日', '作業会社', '作業者', '設備番号(製番)', '設備名', '作業内容', '件数', '実働分', '実働時間', '実働時間(小数)', '単価', '金額', '請求メモ'],
     rows
   }
 }
