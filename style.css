@@ -21,6 +21,9 @@
   --danger: #d92d20;
   --danger-bg: #fff1f0;
   --shadow: 0 18px 50px rgba(19, 28, 45, 0.08);
+  --control-height: 50px;
+  --control-radius: 8px;
+  --keyboard-offset: 0px;
 }
 
 html {
@@ -170,7 +173,7 @@ h2 {
 
 /* ===== Forms ===== */
 .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 13px;
 }
 
 .field-grid,
@@ -207,10 +210,10 @@ textarea {
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  min-height: 46px;
-  padding: 11px 12px;
+  min-height: var(--control-height);
+  padding: 12px 13px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: var(--control-radius);
   color: var(--text);
   background: var(--surface);
   font-size: 16px;
@@ -274,11 +277,11 @@ input[readonly] {
 button {
   width: 100%;
   max-width: 100%;
-  min-height: 50px;
+  min-height: var(--control-height);
   margin-top: 8px;
-  padding: 13px 16px;
+  padding: 12px 16px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--control-radius);
   color: #ffffff;
   background: var(--primary);
   font-size: 17px;
@@ -291,15 +294,17 @@ button:active {
 }
 
 .primary-action {
-  min-height: 56px;
+  min-height: 54px;
+  margin-top: 18px;
   font-size: 20px;
+  box-shadow: 0 12px 24px rgba(15, 107, 255, 0.22);
 }
 
 .compact-action {
   width: auto;
-  min-height: 46px;
+  min-height: var(--control-height);
   margin-top: 0;
-  padding: 11px 16px;
+  padding: 12px 16px;
   font-size: 14px;
 }
 
@@ -320,11 +325,26 @@ button:active {
   line-height: 1.6;
   text-align: center;
   white-space: pre-line;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 #message.success,
 #message.error {
   display: block;
+}
+
+#message.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#message.is-hiding {
+  opacity: 0;
+  transform: translateY(4px);
 }
 
 .success {
@@ -365,9 +385,9 @@ button:active {
 .tab-btn {
   flex: 0 0 auto;
   width: auto;
-  min-height: 40px;
+  min-height: 48px;
   margin-top: 0;
-  padding: 9px 13px;
+  padding: 11px 14px;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: #475467;
@@ -439,6 +459,21 @@ button:active {
   grid-template-columns: minmax(0, 190px) auto;
   gap: 8px;
   align-items: center;
+}
+
+.csv-actions .secondary-btn {
+  background: var(--primary);
+  box-shadow: 0 10px 20px rgba(15, 107, 255, 0.16);
+}
+
+.csv-actions .secondary-btn:active {
+  background: var(--primary-dark);
+}
+
+.csv-actions .secondary-btn:disabled {
+  background: #7aaeff;
+  cursor: wait;
+  opacity: 1;
 }
 
 #summary_table {
@@ -801,6 +836,34 @@ tr:last-child td {
     min-height: 52px;
   }
 
+  .entry-panel {
+    padding-bottom: 86px;
+  }
+
+  .entry-panel > .primary-action {
+    position: fixed;
+    z-index: 40;
+    bottom: calc(10px + env(safe-area-inset-bottom) + var(--keyboard-offset));
+    left: 50%;
+    width: calc(100% - 24px);
+    max-width: 680px;
+    margin-top: 0;
+    transform: translateX(-50%);
+  }
+
+  .entry-panel > #message.success,
+  .entry-panel > #message.error {
+    position: fixed;
+    z-index: 41;
+    bottom: calc(74px + env(safe-area-inset-bottom) + var(--keyboard-offset));
+    left: 50%;
+    width: calc(100% - 24px);
+    max-width: 680px;
+    margin-top: 0;
+    transform: translateX(-50%);
+    box-shadow: 0 12px 24px rgba(19, 28, 45, 0.12);
+  }
+
   .log-actions {
     grid-template-columns: 1fr;
   }
@@ -812,6 +875,36 @@ tr:last-child td {
   .icon-btn {
     flex: 1;
     min-height: 44px;
+  }
+}
+
+@media (max-height: 480px) and (max-width: 940px) {
+  .entry-panel {
+    padding-bottom: 76px;
+  }
+
+  .entry-panel > .primary-action {
+    position: fixed;
+    z-index: 40;
+    bottom: calc(8px + env(safe-area-inset-bottom) + var(--keyboard-offset));
+    left: 50%;
+    width: calc(100% - 24px);
+    max-width: 680px;
+    min-height: 50px;
+    margin-top: 0;
+    transform: translateX(-50%);
+  }
+
+  .entry-panel > #message.success,
+  .entry-panel > #message.error {
+    position: fixed;
+    z-index: 41;
+    bottom: calc(66px + env(safe-area-inset-bottom) + var(--keyboard-offset));
+    left: 50%;
+    width: calc(100% - 24px);
+    max-width: 680px;
+    margin-top: 0;
+    transform: translateX(-50%);
   }
 }
 

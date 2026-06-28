@@ -205,17 +205,34 @@ async function loadSeibanOptions() {
 }
 
 window.exportCsv = async function() {
-  const csvType = document.getElementById('csv_type').value
-  if (csvType === 'summary') {
-    await exportSummaryCsv()
-    return
-  }
-  if (csvType === 'worker_equipment') {
-    await exportWorkerEquipmentCsv()
-    return
+  const button = document.querySelector('.csv-actions button')
+  const originalText = button?.textContent || 'CSV出力'
+  if (button) {
+    button.disabled = true
+    button.textContent = '出力中...'
   }
 
-  await exportDetailCsv()
+  const csvType = document.getElementById('csv_type').value
+
+  try {
+    let success
+    if (csvType === 'summary') {
+      success = await exportSummaryCsv()
+    } else if (csvType === 'worker_equipment') {
+      success = await exportWorkerEquipmentCsv()
+    } else {
+      success = await exportDetailCsv()
+    }
+
+    if (button) button.textContent = success === false ? originalText : '出力しました'
+  } finally {
+    if (button) {
+      setTimeout(() => {
+        button.disabled = false
+        button.textContent = originalText
+      }, 1600)
+    }
+  }
 }
 
 async function fetchSummaryRows() {
@@ -267,7 +284,7 @@ async function exportDetailCsv() {
   } catch (error) {
     console.error('明細CSV出力データの取得に失敗しました', error)
     alert('明細CSV出力データの取得に失敗しました')
-    return
+    return false
   }
 
   await loadWorkerNameMap()
@@ -303,6 +320,7 @@ async function exportDetailCsv() {
   ])
 
   downloadCsv(headers, rows, `kosu_detail_${from}_${to}.csv`)
+  return true
 }
 
 async function exportSummaryCsv() {
@@ -315,12 +333,13 @@ async function exportSummaryCsv() {
   } catch (error) {
     console.error('集計CSV出力データの取得に失敗しました', error)
     alert('集計CSV出力データの取得に失敗しました')
-    return
+    return false
   }
 
   await loadWorkerNameMap()
   const { headers, rows } = createSummaryCsvRows(data)
   downloadCsv(headers, rows, `kosu_summary_${currentTab}_${from}_${to}.csv`)
+  return true
 }
 
 async function exportWorkerEquipmentCsv() {
@@ -333,12 +352,13 @@ async function exportWorkerEquipmentCsv() {
   } catch (error) {
     console.error('作業者別設備CSV出力データの取得に失敗しました', error)
     alert('作業者別設備CSV出力データの取得に失敗しました')
-    return
+    return false
   }
 
   await loadWorkerNameMap()
   const { headers, rows } = createWorkerEquipmentSummaryRows(data, from, to)
   downloadCsv(headers, rows, `kosu_worker_equipment_${from}_${to}.csv`)
+  return true
 }
 
 function downloadCsv(headers, rows, filename) {

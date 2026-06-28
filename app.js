@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient.js'
 
 let workerFeatureEnabled = false
+let messageTimer = null
 
 // 今日の日付をセットします。toISOString()はUTC基準なので、日本時間では日付がずれることがあります。
 document.getElementById('work_date').value = formatDate(new Date())
@@ -241,7 +242,7 @@ async function saveLog() {
     console.error('工数の保存に失敗しました', error)
     showMessage('❌ 保存に失敗しました', 'error')
   } else {
-    showMessage('✅ 保存しました！', 'success')
+    showMessage('✓ 保存しました', 'success')
     resetFormForNextInput()
   }
 }
@@ -286,12 +287,39 @@ function resetFormForNextInput() {
 
 function showMessage(text, type) {
   const el = document.getElementById('message')
+  if (messageTimer) clearTimeout(messageTimer)
+
   el.textContent = text
-  el.className = type
-  setTimeout(() => {
-    el.textContent = ''
-    el.className = ''
-  }, 3000)
+  el.className = `${type} is-visible`
+
+  messageTimer = setTimeout(() => {
+    el.classList.add('is-hiding')
+    setTimeout(() => {
+      el.textContent = ''
+      el.className = ''
+    }, 220)
+  }, type === 'success' ? 2400 : 3000)
+}
+
+function updateKeyboardOffset() {
+  if (!window.visualViewport) return
+
+  const offset = Math.max(
+    0,
+    window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop
+  )
+  document.documentElement.style.setProperty('--keyboard-offset', `${Math.round(offset)}px`)
+}
+
+function setupKeyboardAwareSaveButton() {
+  if (!window.visualViewport) return
+
+  updateKeyboardOffset()
+  window.visualViewport.addEventListener('resize', updateKeyboardOffset)
+  window.visualViewport.addEventListener('scroll', updateKeyboardOffset)
+  window.addEventListener('orientationchange', () => {
+    setTimeout(updateKeyboardOffset, 250)
+  })
 }
 
 // イベントリスナー
@@ -304,6 +332,7 @@ document.getElementById('break2').addEventListener('input', () => handleNumericI
 
 window.searchSeiban = searchSeiban
 window.saveLog = saveLog
+setupKeyboardAwareSaveButton()
 
 async function loadWorkers() {
   const { data, error } = await supabase
