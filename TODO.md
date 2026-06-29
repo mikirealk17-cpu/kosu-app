@@ -16,10 +16,14 @@
 - 請求確認CSVで時間単価、固定単価、請負単価の金額を出力
 - 請負単価は同じ大元請け、元請け、製番ごとにCSV内で1回だけ計上
 - 単価自動適用用のSupabase SQLを分離
+- 単価自動適用の設定手順書を追加
+- 単価自動適用のテストシナリオを追加
 
 ## 次に確認すること
 
 - Supabase SQL Editorで `SUPABASE_RATE_SETUP.sql` を実行する
+- `BILLING_RATE_SETUP_GUIDE.md` の順番に沿って設定する
+- `BILLING_RATE_TEST_SCENARIOS.md` の内容で動作確認する
 - 大元請けを登録する
 - 元請けを大元請けに紐づけて登録する
 - 時間単価、固定単価、請負単価を登録する
