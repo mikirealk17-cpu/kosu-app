@@ -1,8 +1,15 @@
 import { supabase } from './supabaseClient.js'
+import {
+  calculateBillingAmount,
+  fillRateTypeSelect,
+  isContractRate
+} from './rate-utils.js'
 
 let logs = []
 let editingLog = null
 let workerFeatureEnabled = false
+let rateFeatureEnabled = false
+let billingCompanies = []
 
 const today = new Date()
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -98,10 +105,85 @@ async function loadWorkers() {
   })
 }
 
+async function checkRateFeature() {
+  fillRateTypeSelect(document.getElementById('edit_rate_type'))
+
+  const [{ error: rateError }, { error: logError }] = await Promise.all([
+    supabase.from('rate_master').select('id').limit(1),
+    supabase.from('work_logs').select('root_company_id, billing_company_id, rate_type, rate_master_id, unit_price, billing_amount').limit(1)
+  ])
+
+  rateFeatureEnabled = !rateError && !logError
+  document.getElementById('edit_rate_group').style.display = rateFeatureEnabled ? '' : 'none'
+  document.getElementById('edit_rate_type_group').style.display = rateFeatureEnabled ? '' : 'none'
+
+  if (!rateFeatureEnabled) return
+
+  await loadRootCompanyOptions()
+  await loadBillingCompanyOptions()
+}
+
+async function loadRootCompanyOptions() {
+  const select = document.getElementById('edit_root_company')
+  select.innerHTML = '<option value="">大元請けを選択</option>'
+
+  const { data, error } = await supabase
+    .from('root_company_master')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
+    .order('name')
+
+  if (error || !data) {
+    console.error('大元請け一覧の取得に失敗しました', error)
+    rateFeatureEnabled = false
+    document.getElementById('edit_rate_group').style.display = 'none'
+    document.getElementById('edit_rate_type_group').style.display = 'none'
+    return
+  }
+
+  data.forEach(company => {
+    const option = document.createElement('option')
+    option.value = company.id
+    option.textContent = company.name
+    select.appendChild(option)
+  })
+}
+
+async function loadBillingCompanyOptions(rootCompanyId = '') {
+  const select = document.getElementById('edit_billing_company')
+  select.innerHTML = '<option value="">元請けを選択</option>'
+
+  const { data, error } = await supabase
+    .from('billing_company_master')
+    .select('id, name, root_company_id')
+    .eq('is_active', true)
+    .order('sort_order')
+    .order('name')
+
+  if (error || !data) {
+    console.error('元請け一覧の取得に失敗しました', error)
+    return
+  }
+
+  billingCompanies = data
+  data
+    .filter(company => !rootCompanyId || company.root_company_id === rootCompanyId)
+    .forEach(company => {
+      const option = document.createElement('option')
+      option.value = company.id
+      option.textContent = company.name
+      select.appendChild(option)
+    })
+}
+
 window.loadLogs = async function() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
   const workerSelect = workerFeatureEnabled ? 'worker_id,' : ''
+  const rateSelect = rateFeatureEnabled
+    ? 'root_company_id, billing_company_id, rate_type, rate_master_id, unit_price, billing_amount,'
+    : ''
   const filters = getFilters()
 
   let query = supabase
@@ -112,6 +194,7 @@ window.loadLogs = async function() {
       seiban_id,
       work_type_id,
       ${workerSelect}
+      ${rateSelect}
       start_time,
       end_time,
       break1_minutes,
@@ -218,6 +301,14 @@ function startEdit(id) {
 
   if (workerFeatureEnabled && editingLog.worker_id) {
     document.getElementById('edit_worker').value = editingLog.worker_id
+  }
+
+  if (rateFeatureEnabled) {
+    document.getElementById('edit_root_company').value = editingLog.root_company_id || ''
+    loadBillingCompanyOptions(editingLog.root_company_id || '').then(() => {
+      document.getElementById('edit_billing_company').value = editingLog.billing_company_id || ''
+    })
+    document.getElementById('edit_rate_type').value = editingLog.rate_type || ''
   }
 
   document.getElementById('edit_panel').classList.add('active')
@@ -440,6 +531,9 @@ window.updateLog = async function() {
   const break2 = parseInt(document.getElementById('edit_break2').value) || 0
   const note = document.getElementById('edit_note').value.trim()
   const workerId = document.getElementById('edit_worker').value
+  const rootCompanyId = document.getElementById('edit_root_company').value
+  const billingCompanyId = document.getElementById('edit_billing_company').value
+  const rateType = document.getElementById('edit_rate_type').value
 
   if (!workDate || !seiban || !equipmentName || !workTypeId || !startTime || !endTime) {
     showMessage('⚠️ 必須項目を入力してください', 'error')
@@ -454,6 +548,24 @@ window.updateLog = async function() {
 
   const seibanId = await findOrCreateSeiban(seiban, equipmentName)
   if (!seibanId) return
+
+  let appliedRate = null
+  if (rateFeatureEnabled) {
+    if (!rootCompanyId || !billingCompanyId || !rateType || !workerId) {
+      showMessage('⚠️ 大元請け・元請け・作業者・単価区分を入力してください', 'error')
+      return
+    }
+
+    appliedRate = await findApplicableRate({
+      rootCompanyId,
+      billingCompanyId,
+      workerId,
+      seibanId,
+      rateType,
+      actualMinutes
+    })
+    if (!appliedRate) return
+  }
 
   const updateData = {
     work_date: workDate,
@@ -470,6 +582,15 @@ window.updateLog = async function() {
 
   if (workerFeatureEnabled) {
     updateData.worker_id = workerId || null
+  }
+
+  if (rateFeatureEnabled && appliedRate) {
+    updateData.root_company_id = rootCompanyId
+    updateData.billing_company_id = billingCompanyId
+    updateData.rate_type = rateType
+    updateData.rate_master_id = appliedRate.id
+    updateData.unit_price = appliedRate.amount
+    updateData.billing_amount = appliedRate.billingAmount
   }
 
   const updatedText = createUpdatedConfirmText({
@@ -530,12 +651,60 @@ async function findOrCreateSeiban(seiban, equipmentName) {
   return newSeiban.id
 }
 
+async function findApplicableRate({ rootCompanyId, billingCompanyId, workerId, seibanId, rateType, actualMinutes }) {
+  let query = supabase
+    .from('rate_master')
+    .select('id, amount')
+    .eq('is_active', true)
+    .eq('rate_type', rateType)
+    .eq('root_company_id', rootCompanyId)
+    .eq('billing_company_id', billingCompanyId)
+
+  if (isContractRate(rateType)) {
+    query = query.eq('seiban_id', seibanId).is('worker_id', null)
+  } else {
+    query = query.eq('worker_id', workerId).is('seiban_id', null)
+  }
+
+  const { data, error } = await query
+
+  if (error || !data) {
+    console.error('単価確認に失敗しました', error)
+    showMessage('❌ 単価確認に失敗しました', 'error')
+    return null
+  }
+
+  if (data.length === 0) {
+    const message = isContractRate(rateType)
+      ? '⚠️ 請負単価が未設定です。大元請け・元請け・製番・単価区分を確認してください'
+      : '⚠️ 単価が未設定です。大元請け・元請け・作業者・単価区分を確認してください'
+    showMessage(message, 'error')
+    return null
+  }
+
+  if (data.length > 1) {
+    showMessage('⚠️ 単価マスタが重複しています。単価マスタを確認してください', 'error')
+    return null
+  }
+
+  const rate = data[0]
+  return {
+    id: rate.id,
+    amount: rate.amount,
+    billingAmount: calculateBillingAmount(rateType, actualMinutes, rate.amount)
+  }
+}
+
 document.getElementById('edit_start_time').addEventListener('input', calcEditActualTime)
 document.getElementById('edit_end_time').addEventListener('input', calcEditActualTime)
 document.getElementById('edit_break1').addEventListener('input', calcEditActualTime)
 document.getElementById('edit_break2').addEventListener('input', calcEditActualTime)
+document.getElementById('edit_root_company').addEventListener('change', () => {
+  loadBillingCompanyOptions(document.getElementById('edit_root_company').value)
+})
 
 await loadWorkTypes()
 await loadWorkers()
+await checkRateFeature()
 await loadFilterOptions()
 window.loadLogs()

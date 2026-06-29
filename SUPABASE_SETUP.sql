@@ -1,4 +1,4 @@
--- 作業者・作業会社対応に必要なSupabase設定です。
+-- 作業者・元請け対応に必要なSupabase設定です。
 -- Supabase SQL Editorで実行してください。
 -- すでに作成済みの項目がある場合は、該当行を飛ばしてください。
 
@@ -72,7 +72,7 @@ to anon
 using (true)
 with check (true);
 
--- 作業会社マスタ: 表示、追加、編集、非表示化(is_active=false)を許可します。
+-- 元請けマスタ: 表示、追加、編集、非表示化(is_active=false)を許可します。
 drop policy if exists "billing_company_master_select_public" on public.billing_company_master;
 create policy "billing_company_master_select_public"
 on public.billing_company_master

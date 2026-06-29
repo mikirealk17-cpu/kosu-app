@@ -22,7 +22,9 @@
 - `logs.html`: 入力履歴編集画面
 - `admin.html`: 管理画面
 - `workers.html`: 作業者管理画面
-- `billing-companies.html`: 作業会社管理画面
+- `root-companies.html`: 大元請け管理画面
+- `billing-companies.html`: 元請け管理画面
+- `rates.html`: 単価管理画面
 - `work-types.html`: 作業内容マスタ管理画面
 - `seibans.html`: 製番マスタ管理画面
 
@@ -32,26 +34,29 @@
 - `work_type_master`: 作業内容マスタ
 - `work_logs`: 工数記録
 - `worker_master`: 作業者マスタ
-- `billing_company_master`: 作業会社マスタ
+- `root_company_master`: 大元請けマスタ
+- `billing_company_master`: 元請けマスタ
+- `rate_master`: 単価マスタ
 
 2026-06-26時点のAPI確認では、現在接続中のSupabaseに `worker_master` と `work_logs.worker_id` はまだ反映されていません。
 作業者対応を有効にするには、`SUPABASE_SETUP.sql` をSupabase SQL Editorで実行してください。
-作業会社対応も同じSQLに含めています。実行すると `billing_company_master` と `work_logs.billing_company_id` が追加されます。
-作業会社対応だけを追加する場合は、`SUPABASE_BILLING_COMPANY_SETUP.sql` を実行します。
+元請け対応も同じSQLに含めています。実行すると `billing_company_master` と `work_logs.billing_company_id` が追加されます。
+元請け対応だけを追加する場合は、`SUPABASE_BILLING_COMPANY_SETUP.sql` を実行します。
 このSQLは既存の工数データを更新・削除せず、空欄を許可する追加列だけを作ります。
+単価自動適用を追加する場合は、`SUPABASE_RATE_SETUP.sql` を実行します。
 
 SQL実行後の動き:
 
 - `workers.html` で作業者を追加する
-- `billing-companies.html` で作業会社を追加する
-- `index.html` で作業者を選んで工数を保存する
-- `index.html` で作業会社を選ぶと、工数1件ごとに作業会社が保存される
-- 作業者を選ぶと、その作業者で前回使った作業会社が自動で選ばれる
+- `root-companies.html` で大元請けを追加する
+- `billing-companies.html` で元請けを追加し、大元請けに紐づける
+- `rates.html` で時間単価、固定単価、請負単価を追加する
+- `index.html` で作業者、大元請け、元請け、単価区分を選んで工数を保存する
 - `work_logs.worker_id` に選択した作業者IDが保存される
-- `work_logs.billing_company_id` に選択した作業会社IDが保存される
-- `summary.html` の作業会社別タブで会社ごとの工数を確認する
-- 作業会社別CSVで、会社、作業者、設備番号、作業内容ごとの請求参考工数を出力する
-- 作業会社別CSVには小数時間、単価、金額欄を出し、単価確定前でも請求確認に使えるようにする
+- `work_logs.root_company_id` と `work_logs.billing_company_id` に選択した大元請け・元請けIDが保存される
+- `work_logs.rate_master_id`、`unit_price`、`billing_amount` に保存時点の単価情報が保存される
+- `summary.html` の元請け別タブで元請けごとの工数を確認する
+- 請求確認CSVで、大元請け、元請け、単価区分、単価、金額を出力する
 - `summary.html` の作業者別タブで作業者ごとの工数を確認する
 
 ## Supabase利用方針
@@ -71,7 +76,9 @@ Supabase側でRLSを有効にし、公開利用者に許可する操作を明確
 現在の運用方針:
 
 - `worker_master`: 表示、追加、編集、非表示化を許可
+- `root_company_master`: 表示、追加、編集、非表示化を許可
 - `billing_company_master`: 表示、追加、編集、非表示化を許可
+- `rate_master`: 表示、追加、編集、非表示化を許可
 - `work_logs`: 表示、追加、編集、削除を許可
 - `work_type_master`: 表示、追加、編集、非表示化を許可
 - `seiban_master`: 表示、追加、編集、削除を許可

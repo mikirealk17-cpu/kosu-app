@@ -1,7 +1,13 @@
 import { supabase } from './supabaseClient.js'
+import {
+  calculateBillingAmount,
+  fillRateTypeSelect,
+  isContractRate
+} from './rate-utils.js'
 
 let workerFeatureEnabled = false
 let billingCompanyFeatureEnabled = false
+let rateFeatureEnabled = false
 let messageTimer = null
 const LAST_BILLING_COMPANY_KEY_PREFIX = 'kosu_last_billing_company_'
 
@@ -153,7 +159,9 @@ function timeToMinutes(time) {
 // 保存する
 async function saveLog() {
   const workerId = document.getElementById('worker').value
+  const rootCompanyId = document.getElementById('root_company').value
   const billingCompanyId = document.getElementById('billing_company').value
+  const rateType = document.getElementById('rate_type').value
   const seiban = document.getElementById('seiban').value.trim()
   const equipmentName = document.getElementById('equipment_name').value.trim()
   const workTypeId = document.getElementById('work_type').value
@@ -175,7 +183,12 @@ async function saveLog() {
   }
 
   if (billingCompanyFeatureEnabled && !billingCompanyId) {
-    showMessage('⚠️ 作業会社を選択してください', 'error')
+    showMessage('⚠️ 元請けを選択してください', 'error')
+    return
+  }
+
+  if (rateFeatureEnabled && (!rootCompanyId || !billingCompanyId || !rateType)) {
+    showMessage('⚠️ 大元請け・元請け・単価区分を選択してください', 'error')
     return
   }
 
@@ -224,6 +237,19 @@ async function saveLog() {
     seibanId = newSeiban.id
   }
 
+  let appliedRate = null
+  if (rateFeatureEnabled) {
+    appliedRate = await findApplicableRate({
+      rootCompanyId,
+      billingCompanyId,
+      workerId,
+      seibanId,
+      rateType,
+      actualMinutes
+    })
+    if (!appliedRate) return
+  }
+
   // 工数を保存
   const logData = {
     work_date: workDate,
@@ -242,9 +268,17 @@ async function saveLog() {
     logData.worker_id = workerId
   }
 
-  // DB側にbilling_company_id列がある場合だけ、入力時点の作業会社を保存します。
+  // DB側にbilling_company_id列がある場合だけ、入力時点の元請けを保存します。
   if (billingCompanyFeatureEnabled) {
     logData.billing_company_id = billingCompanyId
+  }
+
+  if (rateFeatureEnabled && appliedRate) {
+    logData.root_company_id = rootCompanyId
+    logData.rate_type = rateType
+    logData.rate_master_id = appliedRate.id
+    logData.unit_price = appliedRate.amount
+    logData.billing_amount = appliedRate.billingAmount
   }
 
   const { error } = await supabase
@@ -343,6 +377,9 @@ document.getElementById('start_time').addEventListener('blur', () => formatTimeF
 document.getElementById('end_time').addEventListener('blur', () => formatTimeField('end_time'))
 document.getElementById('break1').addEventListener('input', () => handleNumericInput('break1'))
 document.getElementById('break2').addEventListener('input', () => handleNumericInput('break2'))
+document.getElementById('root_company').addEventListener('change', () => {
+  loadBillingCompanies(document.getElementById('root_company').value)
+})
 document.getElementById('worker').addEventListener('change', () => {
   applyLastBillingCompany(document.getElementById('worker').value)
 })
@@ -386,13 +423,51 @@ async function loadWorkers() {
   })
 }
 
-async function loadBillingCompanies() {
+async function loadRootCompanies() {
+  const select = document.getElementById('root_company')
+  select.innerHTML = ''
+
+  const emptyOption = document.createElement('option')
+  emptyOption.value = ''
+  emptyOption.textContent = '大元請けを選択'
+  select.appendChild(emptyOption)
+
+  const { data, error } = await supabase
+    .from('root_company_master')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
+    .order('name')
+
+  if (error || !data) {
+    console.error('大元請け一覧の取得に失敗しました', error)
+    select.disabled = true
+    emptyOption.textContent = '大元請けDB未設定'
+    return
+  }
+
+  if (data.length === 0) {
+    select.disabled = true
+    emptyOption.textContent = '大元請けを登録してください'
+    return
+  }
+
+  select.disabled = false
+  data.forEach(company => {
+    const option = document.createElement('option')
+    option.value = company.id
+    option.textContent = company.name
+    select.appendChild(option)
+  })
+}
+
+async function loadBillingCompanies(rootCompanyId = '') {
   const select = document.getElementById('billing_company')
   select.innerHTML = ''
 
   const emptyOption = document.createElement('option')
   emptyOption.value = ''
-  emptyOption.textContent = '作業会社を選択'
+  emptyOption.textContent = '元請けを選択'
   select.appendChild(emptyOption)
 
   const { error: columnError } = await supabase
@@ -401,39 +476,54 @@ async function loadBillingCompanies() {
     .limit(1)
 
   if (columnError) {
-    console.error('作業会社列の確認に失敗しました', columnError)
+    console.error('元請け列の確認に失敗しました', columnError)
     billingCompanyFeatureEnabled = false
     select.disabled = true
-    emptyOption.textContent = '作業会社DB未設定'
+    emptyOption.textContent = '元請けDB未設定'
     return
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('billing_company_master')
-    .select('id, name')
+    .select('id, name, root_company_id')
     .eq('is_active', true)
     .order('sort_order')
     .order('name')
 
+  if (error) {
+    const fallback = await supabase
+      .from('billing_company_master')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('sort_order')
+      .order('name')
+    data = fallback.data
+    error = fallback.error
+  }
+
   if (error || !data) {
-    console.error('作業会社一覧の取得に失敗しました', error)
+    console.error('元請け一覧の取得に失敗しました', error)
     billingCompanyFeatureEnabled = false
     select.disabled = true
-    emptyOption.textContent = '作業会社DB未設定'
+    emptyOption.textContent = '元請けDB未設定'
     return
   }
 
-  if (data.length === 0) {
+  const options = rootCompanyId
+    ? data.filter(company => !('root_company_id' in company) || company.root_company_id === rootCompanyId)
+    : data
+
+  if (options.length === 0) {
     billingCompanyFeatureEnabled = false
     select.disabled = true
-    emptyOption.textContent = '作業会社を登録してください'
+    emptyOption.textContent = rootCompanyId ? '元請けを登録してください' : '元請けを選択'
     return
   }
 
   billingCompanyFeatureEnabled = true
   select.disabled = false
 
-  data.forEach(company => {
+  options.forEach(company => {
     const option = document.createElement('option')
     option.value = company.id
     option.textContent = company.name
@@ -441,6 +531,67 @@ async function loadBillingCompanies() {
   })
 
   applyLastBillingCompany(document.getElementById('worker').value)
+}
+
+async function checkRateFeature() {
+  fillRateTypeSelect(document.getElementById('rate_type'))
+
+  const rateSelect = document.getElementById('rate_type')
+  const [{ error: rateError }, { error: logError }] = await Promise.all([
+    supabase.from('rate_master').select('id').limit(1),
+    supabase.from('work_logs').select('root_company_id, rate_type, rate_master_id, unit_price, billing_amount').limit(1)
+  ])
+
+  rateFeatureEnabled = !rateError && !logError
+  rateSelect.disabled = !rateFeatureEnabled
+
+  if (!rateFeatureEnabled) {
+    rateSelect.innerHTML = '<option value="">単価DB未設定</option>'
+  }
+}
+
+async function findApplicableRate({ rootCompanyId, billingCompanyId, workerId, seibanId, rateType, actualMinutes }) {
+  let query = supabase
+    .from('rate_master')
+    .select('id, amount')
+    .eq('is_active', true)
+    .eq('rate_type', rateType)
+    .eq('root_company_id', rootCompanyId)
+    .eq('billing_company_id', billingCompanyId)
+
+  if (isContractRate(rateType)) {
+    query = query.eq('seiban_id', seibanId).is('worker_id', null)
+  } else {
+    query = query.eq('worker_id', workerId).is('seiban_id', null)
+  }
+
+  const { data, error } = await query
+
+  if (error || !data) {
+    console.error('単価確認に失敗しました', error)
+    showMessage('❌ 単価確認に失敗しました', 'error')
+    return null
+  }
+
+  if (data.length === 0) {
+    const message = isContractRate(rateType)
+      ? '⚠️ 請負単価が未設定です。大元請け・元請け・製番・単価区分を確認してください'
+      : '⚠️ 単価が未設定です。大元請け・元請け・作業者・単価区分を確認してください'
+    showMessage(message, 'error')
+    return null
+  }
+
+  if (data.length > 1) {
+    showMessage('⚠️ 単価マスタが重複しています。単価マスタを確認してください', 'error')
+    return null
+  }
+
+  const rate = data[0]
+  return {
+    id: rate.id,
+    amount: rate.amount,
+    billingAmount: calculateBillingAmount(rateType, actualMinutes, rate.amount)
+  }
 }
 
 async function applyLastBillingCompany(workerId) {
@@ -483,4 +634,6 @@ function rememberBillingCompany(workerId, billingCompanyId) {
 
 loadWorkTypes()
 loadWorkers()
+loadRootCompanies()
 loadBillingCompanies()
+checkRateFeature()

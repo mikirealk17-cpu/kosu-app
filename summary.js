@@ -1,8 +1,10 @@
 import { supabase } from './supabaseClient.js'
+import { getRateTypeLabel, isContractRate } from './rate-utils.js'
 
 let currentTab = 'seiban'
 let workerNameMap = {}
 let billingCompanyNameMap = {}
+let rootCompanyNameMap = {}
 
 const today = new Date()
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -156,12 +158,27 @@ async function loadBillingCompanyNameMap() {
     .select('id, name')
 
   if (error || !data) {
-    throw error || new Error('作業会社一覧の取得に失敗しました')
+    throw error || new Error('元請け一覧の取得に失敗しました')
   }
 
   billingCompanyNameMap = {}
   data.forEach(company => {
     billingCompanyNameMap[company.id] = company.name
+  })
+}
+
+async function loadRootCompanyNameMap() {
+  const { data, error } = await supabase
+    .from('root_company_master')
+    .select('id, name')
+
+  if (error || !data) {
+    throw error || new Error('大元請け一覧の取得に失敗しました')
+  }
+
+  rootCompanyNameMap = {}
+  data.forEach(company => {
+    rootCompanyNameMap[company.id] = company.name
   })
 }
 
@@ -404,11 +421,25 @@ async function exportBillingCompanyCsv() {
     data = await fetchBillingCompanyRows()
     await Promise.all([
       loadWorkerNameMap(),
+      loadRootCompanyNameMap(),
       loadBillingCompanyNameMap()
     ])
   } catch (error) {
-    console.error('作業会社別CSV出力データの取得に失敗しました', error)
-    alert('作業会社別CSVには、Supabase側で作業会社DB設定が必要です')
+    console.error('請求確認CSV出力データの取得に失敗しました', error)
+    alert('請求確認CSVには、Supabase側で単価DB設定が必要です')
+    return false
+  }
+
+  const invalidRows = data.filter(row => (
+    !row.root_company_id ||
+    !row.billing_company_id ||
+    !row.rate_type ||
+    !row.rate_master_id ||
+    row.unit_price == null
+  ))
+
+  if (invalidRows.length > 0) {
+    alert('単価情報が未設定の工数があるため、金額CSVを出力できません')
     return false
   }
 
@@ -626,14 +657,14 @@ function createWorkerEquipmentSummaryRows(data, from, to) {
 function createBillingCompanySummaryRows(data) {
   const map = {}
   data.forEach(row => {
-    const company = billingCompanyNameMap[row.billing_company_id] || '作業会社未設定'
+    const company = billingCompanyNameMap[row.billing_company_id] || '元請け未設定'
     if (!map[company]) map[company] = { count: 0, minutes: 0 }
     map[company].count += 1
     map[company].minutes += row.actual_minutes || 0
   })
 
   return {
-    headers: ['作業会社', '件数', '実働分', '実働時間'],
+    headers: ['元請け', '件数', '実働分', '実働時間'],
     rows: Object.entries(map).map(([company, val]) => [
       company,
       val.count,
@@ -646,57 +677,86 @@ function createBillingCompanySummaryRows(data) {
 function createBillingCompanyInvoiceRows(data, from, to) {
   const map = {}
   data.forEach(row => {
-    const company = billingCompanyNameMap[row.billing_company_id] || '作業会社未設定'
+    const rootCompany = rootCompanyNameMap[row.root_company_id] || '大元請け未設定'
+    const company = billingCompanyNameMap[row.billing_company_id] || '元請け未設定'
     const worker = workerNameMap[row.worker_id] || '作業者未設定'
     const seiban = row.seiban_master?.seiban || '不明'
     const equipment = row.seiban_master?.equipment_name || '不明'
     const workType = row.work_type_master?.name || '不明'
-    const key = `${company}__${worker}__${seiban}__${equipment}__${workType}`
+    const key = `${rootCompany}__${company}__${worker}__${seiban}__${equipment}__${workType}__${row.rate_type}__${row.unit_price}`
 
     if (!map[key]) {
       map[key] = {
         from,
         to,
+        rootCompany,
         company,
         worker,
         seiban,
         equipment,
         workType,
+        rateType: row.rate_type,
+        unitPrice: Number(row.unit_price) || 0,
         count: 0,
-        minutes: 0
+        minutes: 0,
+        amount: 0,
+        contractKey: `${row.root_company_id}__${row.billing_company_id}__${row.seiban_id}`
       }
     }
 
     map[key].count += 1
     map[key].minutes += row.actual_minutes || 0
+    if (!isContractRate(row.rate_type)) {
+      map[key].amount += row.billing_amount || 0
+    }
   })
 
+  const countedContracts = new Set()
   const rows = Object.values(map)
     .sort((a, b) => (
+      a.rootCompany.localeCompare(b.rootCompany, 'ja') ||
       a.company.localeCompare(b.company, 'ja') ||
-      a.worker.localeCompare(b.worker, 'ja') ||
       a.seiban.localeCompare(b.seiban, 'ja') ||
+      a.worker.localeCompare(b.worker, 'ja') ||
       a.workType.localeCompare(b.workType, 'ja')
     ))
-    .map(row => [
-      row.from,
-      row.to,
-      row.company,
-      row.worker,
-      row.seiban,
-      row.equipment,
-      row.workType,
-      row.count,
-      row.minutes,
-      minutesToHM(row.minutes),
-      minutesToDecimalHours(row.minutes),
-      '',
-      '',
-      ''
-    ])
+    .map(row => {
+      let amount = row.amount
+      let billingFlag = '計上'
+
+      if (isContractRate(row.rateType)) {
+        if (countedContracts.has(row.contractKey)) {
+          amount = 0
+          billingFlag = '内訳のみ'
+        } else {
+          countedContracts.add(row.contractKey)
+          amount = row.unitPrice
+          billingFlag = '計上'
+        }
+      }
+
+      return [
+        row.from,
+        row.to,
+        row.rootCompany,
+        row.company,
+        getRateTypeLabel(row.rateType),
+        row.worker,
+        row.seiban,
+        row.equipment,
+        row.workType,
+        row.count,
+        row.minutes,
+        minutesToHM(row.minutes),
+        minutesToDecimalHours(row.minutes),
+        row.unitPrice,
+        amount,
+        billingFlag
+      ]
+    })
 
   return {
-    headers: ['開始日', '終了日', '作業会社', '作業者', '設備番号(製番)', '設備名', '作業内容', '件数', '実働分', '実働時間', '実働時間(小数)', '単価', '金額', '請求メモ'],
+    headers: ['開始日', '終了日', '大元請け', '元請け', '単価区分', '作業者', '製番', '設備名', '作業内容', '件数', '実働分', '実働時間', '実働時間(小数)', '単価', '金額', '請負計上フラグ'],
     rows
   }
 }
@@ -738,10 +798,10 @@ async function loadBillingCompanySummary() {
     renderBillingCompany(data)
     setSummaryStatus(`${data.length}件のデータを表示しました`)
   } catch (error) {
-    console.error('作業会社別集計データの取得に失敗しました', error)
-    document.getElementById('summary_table').innerHTML = '<p>作業会社別集計には、Supabase側で作業会社DB設定が必要です</p>'
+    console.error('元請け別集計データの取得に失敗しました', error)
+    document.getElementById('summary_table').innerHTML = '<p>元請け別集計には、Supabase側で元請けDB設定が必要です</p>'
     renderSummaryMetrics([])
-    setSummaryStatus('作業会社別集計の取得に失敗しました')
+    setSummaryStatus('元請け別集計の取得に失敗しました')
   }
 }
 
@@ -756,7 +816,13 @@ async function fetchBillingCompanyRows() {
       actual_minutes,
       work_date,
       worker_id,
+      seiban_id,
+      root_company_id,
       billing_company_id,
+      rate_type,
+      rate_master_id,
+      unit_price,
+      billing_amount,
       seiban_master (
         seiban,
         equipment_name
@@ -774,7 +840,7 @@ async function fetchBillingCompanyRows() {
   const { data, error } = await query
 
   if (error || !data) {
-    throw error || new Error('作業会社別集計データの取得に失敗しました')
+    throw error || new Error('元請け別集計データの取得に失敗しました')
   }
 
   return data
@@ -805,7 +871,7 @@ function renderSummaryMetrics(data) {
 function renderBillingCompany(data) {
   const map = {}
   data.forEach(row => {
-    const company = billingCompanyNameMap[row.billing_company_id] || '作業会社未設定'
+    const company = billingCompanyNameMap[row.billing_company_id] || '元請け未設定'
     if (!map[company]) {
       map[company] = { count: 0, minutes: 0 }
     }
@@ -813,7 +879,7 @@ function renderBillingCompany(data) {
     map[company].minutes += row.actual_minutes || 0
   })
 
-  let html = '<table><tr><th>作業会社</th><th>件数</th><th>工数</th></tr>'
+  let html = '<table><tr><th>元請け</th><th>件数</th><th>工数</th></tr>'
   let totalMinutes = 0
   let totalCount = 0
   Object.entries(map).forEach(([company, val]) => {

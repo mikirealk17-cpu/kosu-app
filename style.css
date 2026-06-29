@@ -655,7 +655,7 @@ tr:last-child td {
 
 .admin-counts {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -703,6 +703,10 @@ tr:last-child td {
 
 .add-form {
   grid-template-columns: minmax(0, 1fr) minmax(0, 120px) auto;
+}
+
+.rate-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .back-btn {

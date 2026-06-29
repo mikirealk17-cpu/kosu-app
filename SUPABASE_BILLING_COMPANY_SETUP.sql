@@ -1,4 +1,4 @@
--- 作業会社対応だけを追加するSupabase設定です。
+-- 元請け対応だけを追加するSupabase設定です。
 -- Supabase SQL Editorで実行してください。
 --
 -- 安全方針:
@@ -21,7 +21,7 @@ create index if not exists work_logs_billing_company_id_idx
   on public.work_logs(billing_company_id);
 
 -- このアプリはログインなしで使うため、利用者はSupabase上では anon として扱われます。
--- 作業会社マスタの表示、追加、編集、非表示化(is_active=false)だけを許可します。
+-- 元請けマスタの表示、追加、編集、非表示化(is_active=false)だけを許可します。
 
 alter table public.billing_company_master enable row level security;
 

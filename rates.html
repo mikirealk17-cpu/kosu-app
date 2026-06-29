@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>単価管理</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>単価管理</h1>
+
+    <nav class="page-links" aria-label="画面移動">
+      <a href="admin.html">管理画面</a>
+      <a href="index.html">工数入力</a>
+      <a href="summary.html">集計画面</a>
+    </nav>
+
+    <div class="worker-list" id="rate_list"></div>
+
+    <div class="form-group">
+      <label>新しい単価を追加</label>
+      <div class="add-form rate-form">
+        <select id="new_rate_root" aria-label="大元請け"></select>
+        <select id="new_rate_billing" aria-label="元請け"></select>
+        <select id="new_rate_type" aria-label="単価区分"></select>
+        <select id="new_rate_worker" aria-label="作業者"></select>
+        <select id="new_rate_seiban" aria-label="製番"></select>
+        <input type="number" id="new_rate_amount" min="0" step="1" placeholder="金額">
+        <button onclick="addRate()">追加</button>
+      </div>
+    </div>
+
+    <div id="message"></div>
+  </div>
+
+  <script src="rates.js" type="module"></script>
+</body>
+</html>
