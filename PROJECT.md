@@ -38,12 +38,10 @@
 - `billing_company_master`: 元請けマスタ
 - `rate_master`: 単価マスタ
 
-2026-06-26時点のAPI確認では、現在接続中のSupabaseに `worker_master` と `work_logs.worker_id` はまだ反映されていません。
-作業者対応を有効にするには、`SUPABASE_SETUP.sql` をSupabase SQL Editorで実行してください。
-元請け対応も同じSQLに含めています。実行すると `billing_company_master` と `work_logs.billing_company_id` が追加されます。
-元請け対応だけを追加する場合は、`SUPABASE_BILLING_COMPANY_SETUP.sql` を実行します。
-このSQLは既存の工数データを更新・削除せず、空欄を許可する追加列だけを作ります。
-単価自動適用を追加する場合は、`SUPABASE_RATE_SETUP.sql` を実行します。
+2026-06-30時点で、現在接続中のSupabaseには作業者、元請け、大元請け、単価自動適用に必要なテーブルと列が反映済みです。
+新規環境へ設定する場合は、`SUPABASE_SETUP.sql` と `SUPABASE_RATE_SETUP.sql` をSupabase SQL Editorで実行します。
+元請け対応だけを追加したい場合は、`SUPABASE_BILLING_COMPANY_SETUP.sql` を実行します。
+これらのSQLは既存の工数データを自動変換せず、過去データを勝手に変更しない方針です。
 
 SQL実行後の動き:
 
