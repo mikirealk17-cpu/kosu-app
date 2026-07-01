@@ -1,7 +1,6 @@
 import { supabase } from './supabaseClient.js'
 import { fillRateTypeSelect, getRateTypeLabel, isContractRate } from './rate-utils.js'
 
-let rootCompanies = []
 let billingCompanies = []
 let workers = []
 let seibans = []
@@ -14,27 +13,24 @@ window.loadRates = async function() {
 async function loadMasterOptions() {
   fillRateTypeSelect(document.getElementById('new_rate_type'))
 
-  const [rootRes, billingRes, workerRes, seibanRes] = await Promise.all([
-    supabase.from('root_company_master').select('id, name').eq('is_active', true).order('sort_order').order('name'),
-    supabase.from('billing_company_master').select('id, name, root_company_id').eq('is_active', true).order('sort_order').order('name'),
+  const [billingRes, workerRes, seibanRes] = await Promise.all([
+    supabase.from('billing_company_master').select('id, name').eq('is_active', true).order('sort_order').order('name'),
     supabase.from('worker_master').select('id, name').eq('is_active', true).order('sort_order').order('name'),
     supabase.from('seiban_master').select('id, seiban, equipment_name').order('seiban')
   ])
 
-  if (rootRes.error || billingRes.error || workerRes.error || seibanRes.error) {
-    console.error('単価管理マスタの取得に失敗しました', rootRes.error || billingRes.error || workerRes.error || seibanRes.error)
+  if (billingRes.error || workerRes.error || seibanRes.error) {
+    console.error('単価管理マスタの取得に失敗しました', billingRes.error || workerRes.error || seibanRes.error)
     showMessage('❌ 単価管理に必要なDB設定が未完了です', 'error')
     setRateFormEnabled(false)
     return
   }
 
-  rootCompanies = rootRes.data || []
   billingCompanies = billingRes.data || []
   workers = workerRes.data || []
   seibans = seibanRes.data || []
 
   setRateFormEnabled(true)
-  fillRootSelect()
   fillBillingSelect()
   fillWorkerSelect()
   fillSeibanSelect()
@@ -46,7 +42,6 @@ async function loadRateList() {
     .from('rate_master')
     .select(`
       *,
-      root_company_master (name),
       billing_company_master (name),
       worker_master (name),
       seiban_master (seiban, equipment_name)
@@ -78,7 +73,7 @@ async function loadRateList() {
 
     const main = document.createElement('span')
     main.className = 'worker-name'
-    main.textContent = `${rate.root_company_master?.name || '大元請け不明'} / ${rate.billing_company_master?.name || '元請け不明'}`
+    main.textContent = rate.billing_company_master?.name || '元請け不明'
 
     const status = document.createElement('span')
     status.className = rate.is_active ? 'worker-status active' : 'worker-status inactive'
@@ -127,14 +122,13 @@ async function loadRateList() {
 
 window.addRate = async function() {
   const rateType = document.getElementById('new_rate_type').value
-  const rootCompanyId = document.getElementById('new_rate_root').value
   const billingCompanyId = document.getElementById('new_rate_billing').value
   const workerId = document.getElementById('new_rate_worker').value
   const seibanId = document.getElementById('new_rate_seiban').value
   const amount = Number(document.getElementById('new_rate_amount').value)
 
-  if (!rateType || !rootCompanyId || !billingCompanyId || !amount) {
-    showMessage('⚠️ 大元請け・元請け・単価区分・金額を入力してください', 'error')
+  if (!rateType || !billingCompanyId || !amount) {
+    showMessage('⚠️ 元請け・単価区分・金額を入力してください', 'error')
     return
   }
 
@@ -150,7 +144,6 @@ window.addRate = async function() {
 
   const payload = {
     rate_type: rateType,
-    root_company_id: rootCompanyId,
     billing_company_id: billingCompanyId,
     worker_id: isContractRate(rateType) ? null : workerId,
     seiban_id: isContractRate(rateType) ? seibanId : null,
@@ -234,24 +227,11 @@ window.restoreRate = async function(id) {
   window.loadRates()
 }
 
-function fillRootSelect() {
-  const select = document.getElementById('new_rate_root')
-  select.innerHTML = '<option value="">大元請けを選択</option>'
-  rootCompanies.forEach(company => {
-    const option = document.createElement('option')
-    option.value = company.id
-    option.textContent = company.name
-    select.appendChild(option)
-  })
-}
-
 function fillBillingSelect() {
-  const rootCompanyId = document.getElementById('new_rate_root').value
   const select = document.getElementById('new_rate_billing')
   select.innerHTML = '<option value="">元請けを選択</option>'
 
   billingCompanies
-    .filter(company => !rootCompanyId || company.root_company_id === rootCompanyId)
     .forEach(company => {
       const option = document.createElement('option')
       option.value = company.id
@@ -312,7 +292,6 @@ function setRateFormEnabled(enabled) {
   })
 }
 
-document.getElementById('new_rate_root').addEventListener('change', fillBillingSelect)
 document.getElementById('new_rate_type').addEventListener('change', updateRateTargetFields)
 
 window.loadRates()

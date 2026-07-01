@@ -159,7 +159,6 @@ function timeToMinutes(time) {
 // 保存する
 async function saveLog() {
   const workerId = document.getElementById('worker').value
-  const rootCompanyId = document.getElementById('root_company').value
   const billingCompanyId = document.getElementById('billing_company').value
   const rateType = document.getElementById('rate_type').value
   const seiban = document.getElementById('seiban').value.trim()
@@ -187,8 +186,8 @@ async function saveLog() {
     return
   }
 
-  if (rateFeatureEnabled && (!rootCompanyId || !billingCompanyId || !rateType)) {
-    showMessage('⚠️ 大元請け・元請け・単価区分を選択してください', 'error')
+  if (rateFeatureEnabled && (!billingCompanyId || !rateType)) {
+    showMessage('⚠️ 元請け・単価区分を選択してください', 'error')
     return
   }
 
@@ -240,7 +239,6 @@ async function saveLog() {
   let appliedRate = null
   if (rateFeatureEnabled) {
     appliedRate = await findApplicableRate({
-      rootCompanyId,
       billingCompanyId,
       workerId,
       seibanId,
@@ -274,7 +272,6 @@ async function saveLog() {
   }
 
   if (rateFeatureEnabled && appliedRate) {
-    logData.root_company_id = rootCompanyId
     logData.rate_type = rateType
     logData.rate_master_id = appliedRate.id
     logData.unit_price = appliedRate.amount
@@ -382,9 +379,6 @@ document.getElementById('start_time').addEventListener('blur', () => formatTimeF
 document.getElementById('end_time').addEventListener('blur', () => formatTimeField('end_time'))
 document.getElementById('break1').addEventListener('input', () => handleNumericInput('break1'))
 document.getElementById('break2').addEventListener('input', () => handleNumericInput('break2'))
-document.getElementById('root_company').addEventListener('change', () => {
-  loadBillingCompanies(document.getElementById('root_company').value)
-})
 document.getElementById('worker').addEventListener('change', () => {
   applyLastBillingCompany(document.getElementById('worker').value)
 })
@@ -428,45 +422,7 @@ async function loadWorkers() {
   })
 }
 
-async function loadRootCompanies() {
-  const select = document.getElementById('root_company')
-  select.innerHTML = ''
-
-  const emptyOption = document.createElement('option')
-  emptyOption.value = ''
-  emptyOption.textContent = '大元請けを選択'
-  select.appendChild(emptyOption)
-
-  const { data, error } = await supabase
-    .from('root_company_master')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('sort_order')
-    .order('name')
-
-  if (error || !data) {
-    console.error('大元請け一覧の取得に失敗しました', error)
-    select.disabled = true
-    emptyOption.textContent = '大元請けDB未設定'
-    return
-  }
-
-  if (data.length === 0) {
-    select.disabled = true
-    emptyOption.textContent = '大元請けを登録してください'
-    return
-  }
-
-  select.disabled = false
-  data.forEach(company => {
-    const option = document.createElement('option')
-    option.value = company.id
-    option.textContent = company.name
-    select.appendChild(option)
-  })
-}
-
-async function loadBillingCompanies(rootCompanyId = '') {
+async function loadBillingCompanies() {
   const select = document.getElementById('billing_company')
   select.innerHTML = ''
 
@@ -490,7 +446,7 @@ async function loadBillingCompanies(rootCompanyId = '') {
 
   let { data, error } = await supabase
     .from('billing_company_master')
-    .select('id, name, root_company_id')
+    .select('id, name')
     .eq('is_active', true)
     .order('sort_order')
     .order('name')
@@ -514,21 +470,17 @@ async function loadBillingCompanies(rootCompanyId = '') {
     return
   }
 
-  const options = rootCompanyId
-    ? data.filter(company => !('root_company_id' in company) || company.root_company_id === rootCompanyId)
-    : data
-
-  if (options.length === 0) {
+  if (data.length === 0) {
     billingCompanyFeatureEnabled = false
     select.disabled = true
-    emptyOption.textContent = rootCompanyId ? '元請けを登録してください' : '元請けを選択'
+    emptyOption.textContent = '元請けを登録してください'
     return
   }
 
   billingCompanyFeatureEnabled = true
   select.disabled = false
 
-  options.forEach(company => {
+  data.forEach(company => {
     const option = document.createElement('option')
     option.value = company.id
     option.textContent = company.name
@@ -544,7 +496,7 @@ async function checkRateFeature() {
   const rateSelect = document.getElementById('rate_type')
   const [{ error: rateError }, { error: logError }] = await Promise.all([
     supabase.from('rate_master').select('id').limit(1),
-    supabase.from('work_logs').select('root_company_id, rate_type, rate_master_id, unit_price, billing_amount').limit(1)
+    supabase.from('work_logs').select('rate_type, rate_master_id, unit_price, billing_amount').limit(1)
   ])
 
   rateFeatureEnabled = !rateError && !logError
@@ -555,13 +507,12 @@ async function checkRateFeature() {
   }
 }
 
-async function findApplicableRate({ rootCompanyId, billingCompanyId, workerId, seibanId, rateType, actualMinutes }) {
+async function findApplicableRate({ billingCompanyId, workerId, seibanId, rateType, actualMinutes }) {
   let query = supabase
     .from('rate_master')
     .select('id, amount')
     .eq('is_active', true)
     .eq('rate_type', rateType)
-    .eq('root_company_id', rootCompanyId)
     .eq('billing_company_id', billingCompanyId)
 
   if (isContractRate(rateType)) {
@@ -580,8 +531,8 @@ async function findApplicableRate({ rootCompanyId, billingCompanyId, workerId, s
 
   if (data.length === 0) {
     const message = isContractRate(rateType)
-      ? '⚠️ 請負単価が未設定です。大元請け・元請け・製番・単価区分を確認してください'
-      : '⚠️ 単価が未設定です。大元請け・元請け・作業者・単価区分を確認してください'
+      ? '⚠️ 請負単価が未設定です。元請け・製番・単価区分を確認してください'
+      : '⚠️ 単価が未設定です。元請け・作業者・単価区分を確認してください'
     showMessage(message, 'error')
     return null
   }
@@ -639,6 +590,5 @@ function rememberBillingCompany(workerId, billingCompanyId) {
 
 loadWorkTypes()
 loadWorkers()
-loadRootCompanies()
 loadBillingCompanies()
 checkRateFeature()

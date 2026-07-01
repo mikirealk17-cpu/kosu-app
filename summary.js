@@ -4,7 +4,6 @@ import { getRateTypeLabel, isContractRate } from './rate-utils.js'
 let currentTab = 'seiban'
 let workerNameMap = {}
 let billingCompanyNameMap = {}
-let rootCompanyNameMap = {}
 
 const today = new Date()
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -164,21 +163,6 @@ async function loadBillingCompanyNameMap() {
   billingCompanyNameMap = {}
   data.forEach(company => {
     billingCompanyNameMap[company.id] = company.name
-  })
-}
-
-async function loadRootCompanyNameMap() {
-  const { data, error } = await supabase
-    .from('root_company_master')
-    .select('id, name')
-
-  if (error || !data) {
-    throw error || new Error('大元請け一覧の取得に失敗しました')
-  }
-
-  rootCompanyNameMap = {}
-  data.forEach(company => {
-    rootCompanyNameMap[company.id] = company.name
   })
 }
 
@@ -421,7 +405,6 @@ async function exportBillingCompanyCsv() {
     data = await fetchBillingCompanyRows()
     await Promise.all([
       loadWorkerNameMap(),
-      loadRootCompanyNameMap(),
       loadBillingCompanyNameMap()
     ])
   } catch (error) {
@@ -431,7 +414,6 @@ async function exportBillingCompanyCsv() {
   }
 
   const invalidRows = data.filter(row => (
-    !row.root_company_id ||
     !row.billing_company_id ||
     !row.rate_type ||
     !row.rate_master_id ||
@@ -677,19 +659,17 @@ function createBillingCompanySummaryRows(data) {
 function createBillingCompanyInvoiceRows(data, from, to) {
   const map = {}
   data.forEach(row => {
-    const rootCompany = rootCompanyNameMap[row.root_company_id] || '大元請け未設定'
     const company = billingCompanyNameMap[row.billing_company_id] || '元請け未設定'
     const worker = workerNameMap[row.worker_id] || '作業者未設定'
     const seiban = row.seiban_master?.seiban || '不明'
     const equipment = row.seiban_master?.equipment_name || '不明'
     const workType = row.work_type_master?.name || '不明'
-    const key = `${rootCompany}__${company}__${worker}__${seiban}__${equipment}__${workType}__${row.rate_type}__${row.unit_price}`
+    const key = `${company}__${worker}__${seiban}__${equipment}__${workType}__${row.rate_type}__${row.unit_price}`
 
     if (!map[key]) {
       map[key] = {
         from,
         to,
-        rootCompany,
         company,
         worker,
         seiban,
@@ -700,7 +680,7 @@ function createBillingCompanyInvoiceRows(data, from, to) {
         count: 0,
         minutes: 0,
         amount: 0,
-        contractKey: `${row.root_company_id}__${row.billing_company_id}__${row.seiban_id}`
+        contractKey: `${row.billing_company_id}__${row.seiban_id}`
       }
     }
 
@@ -714,7 +694,6 @@ function createBillingCompanyInvoiceRows(data, from, to) {
   const countedContracts = new Set()
   const rows = Object.values(map)
     .sort((a, b) => (
-      a.rootCompany.localeCompare(b.rootCompany, 'ja') ||
       a.company.localeCompare(b.company, 'ja') ||
       a.seiban.localeCompare(b.seiban, 'ja') ||
       a.worker.localeCompare(b.worker, 'ja') ||
@@ -738,7 +717,6 @@ function createBillingCompanyInvoiceRows(data, from, to) {
       return [
         row.from,
         row.to,
-        row.rootCompany,
         row.company,
         getRateTypeLabel(row.rateType),
         row.worker,
@@ -756,7 +734,7 @@ function createBillingCompanyInvoiceRows(data, from, to) {
     })
 
   return {
-    headers: ['開始日', '終了日', '大元請け', '元請け', '単価区分', '作業者', '製番', '設備名', '作業内容', '件数', '実働分', '実働時間', '実働時間(小数)', '単価', '金額', '請負計上フラグ'],
+    headers: ['開始日', '終了日', '元請け', '単価区分', '作業者', '製番', '設備名', '作業内容', '件数', '実働分', '実働時間', '実働時間(小数)', '単価', '金額', '請負計上フラグ'],
     rows
   }
 }
@@ -817,7 +795,6 @@ async function fetchBillingCompanyRows() {
       work_date,
       worker_id,
       seiban_id,
-      root_company_id,
       billing_company_id,
       rate_type,
       rate_master_id,
