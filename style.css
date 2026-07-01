@@ -853,11 +853,13 @@ tr:last-child td {
     position: fixed;
     z-index: 40;
     bottom: calc(10px + env(safe-area-inset-bottom) + var(--keyboard-offset));
-    left: 50%;
-    width: calc(100% - 24px);
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    width: auto;
     max-width: 680px;
+    margin-right: auto;
+    margin-left: auto;
     margin-top: 0;
-    transform: translateX(-50%);
   }
 
   .entry-panel > #message.success,
@@ -865,11 +867,13 @@ tr:last-child td {
     position: fixed;
     z-index: 41;
     bottom: calc(74px + env(safe-area-inset-bottom) + var(--keyboard-offset));
-    left: 50%;
-    width: calc(100% - 24px);
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    width: auto;
     max-width: 680px;
+    margin-right: auto;
+    margin-left: auto;
     margin-top: 0;
-    transform: translateX(-50%);
     box-shadow: 0 12px 24px rgba(19, 28, 45, 0.12);
   }
 
@@ -896,12 +900,14 @@ tr:last-child td {
     position: fixed;
     z-index: 40;
     bottom: calc(8px + env(safe-area-inset-bottom) + var(--keyboard-offset));
-    left: 50%;
-    width: calc(100% - 24px);
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    width: auto;
     max-width: 680px;
     min-height: 50px;
+    margin-right: auto;
+    margin-left: auto;
     margin-top: 0;
-    transform: translateX(-50%);
   }
 
   .entry-panel > #message.success,
@@ -909,11 +915,13 @@ tr:last-child td {
     position: fixed;
     z-index: 41;
     bottom: calc(66px + env(safe-area-inset-bottom) + var(--keyboard-offset));
-    left: 50%;
-    width: calc(100% - 24px);
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    width: auto;
     max-width: 680px;
+    margin-right: auto;
+    margin-left: auto;
     margin-top: 0;
-    transform: translateX(-50%);
   }
 }
 
