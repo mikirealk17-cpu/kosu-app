@@ -352,9 +352,14 @@ function showMessage(text, type) {
 function updateKeyboardOffset() {
   if (!window.visualViewport) return
 
+  if (window.visualViewport.offsetTop < 0) {
+    document.documentElement.style.setProperty('--keyboard-offset', '0px')
+    return
+  }
+
   const offset = Math.max(
     0,
-    window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop
+    window.innerHeight - window.visualViewport.height - Math.max(0, window.visualViewport.offsetTop)
   )
   document.documentElement.style.setProperty('--keyboard-offset', `${Math.round(offset)}px`)
 }
