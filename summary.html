@@ -33,10 +33,8 @@
       <div class="tab-buttons" role="tablist" aria-label="集計の種類">
         <button class="tab-btn active" onclick="switchTab('seiban')">製番別</button>
         <button class="tab-btn" onclick="switchTab('seiban_detail')">製番明細</button>
-        <button class="tab-btn" onclick="switchTab('equipment')">設備別</button>
         <button class="tab-btn" onclick="switchTab('daily')">日別</button>
         <button class="tab-btn" onclick="switchTab('monthly')">月別</button>
-        <button class="tab-btn" onclick="switchTab('worker_daily')">作業者日別</button>
         <button class="tab-btn" onclick="switchTab('worker')">作業者別</button>
         <button class="tab-btn" onclick="switchTab('billing_company')">元請け別</button>
       </div>
@@ -72,8 +70,7 @@
         <div class="csv-actions">
           <select id="csv_type" aria-label="CSVの種類">
             <option value="detail">明細CSV</option>
-            <option value="summary">集計CSV</option>
-            <option value="worker_equipment">作業者別設備CSV</option>
+            <option value="summary" id="summary_csv_option">製番別CSV</option>
             <option value="billing_company">請求確認CSV</option>
           </select>
           <button class="secondary-btn compact-action" onclick="exportCsv()">CSV出力</button>

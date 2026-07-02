@@ -5,6 +5,15 @@ let currentTab = 'seiban'
 let workerNameMap = {}
 let billingCompanyNameMap = {}
 
+const summaryCsvLabels = {
+  seiban: '製番別CSV',
+  seiban_detail: '製番明細CSV',
+  daily: '日別CSV',
+  monthly: '月別CSV',
+  worker: '作業者別CSV',
+  billing_company: '元請け別CSV'
+}
+
 const today = new Date()
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
 document.getElementById('date_from').value = formatDate(firstDay)
@@ -14,6 +23,7 @@ window.switchTab = function(tab) {
   currentTab = tab
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'))
   document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active')
+  updateSummaryCsvOption()
   window.loadData()
 }
 
@@ -74,14 +84,16 @@ window.loadData = async function() {
     await loadWorkerNameMap()
     renderSeibanDetail(data)
   }
-  if (currentTab === 'equipment') renderEquipment(data)
   if (currentTab === 'daily') renderDaily(data)
   if (currentTab === 'monthly') renderMonthly(data)
-  if (currentTab === 'worker_daily') {
-    await loadWorkerNameMap()
-    renderWorkerDaily(data)
-  }
   setSummaryStatus(`${data.length}件のデータを表示しました`)
+}
+
+function updateSummaryCsvOption() {
+  const option = document.getElementById('summary_csv_option')
+  if (!option) return
+
+  option.textContent = summaryCsvLabels[currentTab] || '表示中の集計CSV'
 }
 
 function formatDate(date) {
@@ -244,8 +256,6 @@ window.exportCsv = async function() {
     let success
     if (csvType === 'summary') {
       success = await exportSummaryCsv()
-    } else if (csvType === 'worker_equipment') {
-      success = await exportWorkerEquipmentCsv()
     } else if (csvType === 'billing_company') {
       success = await exportBillingCompanyCsv()
     } else {
@@ -377,25 +387,6 @@ async function exportSummaryCsv() {
   return true
 }
 
-async function exportWorkerEquipmentCsv() {
-  const from = document.getElementById('date_from').value
-  const to = document.getElementById('date_to').value
-  let data
-
-  try {
-    data = await fetchSummaryRows()
-  } catch (error) {
-    console.error('作業者別設備CSV出力データの取得に失敗しました', error)
-    alert('作業者別設備CSV出力データの取得に失敗しました')
-    return false
-  }
-
-  await loadWorkerNameMap()
-  const { headers, rows } = createWorkerEquipmentSummaryRows(data, from, to)
-  downloadCsv(headers, rows, `kosu_worker_equipment_${from}_${to}.csv`)
-  return true
-}
-
 async function exportBillingCompanyCsv() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
@@ -449,10 +440,8 @@ function downloadCsv(headers, rows, filename) {
 function createSummaryCsvRows(data) {
   if (currentTab === 'seiban') return createSeibanSummaryRows(data)
   if (currentTab === 'seiban_detail') return createSeibanDetailRows(data)
-  if (currentTab === 'equipment') return createEquipmentSummaryRows(data)
   if (currentTab === 'daily') return createDailySummaryRows(data)
   if (currentTab === 'monthly') return createMonthlySummaryRows(data)
-  if (currentTab === 'worker_daily') return createWorkerDailySummaryRows(data)
   if (currentTab === 'worker') return createWorkerSummaryRows(data)
   if (currentTab === 'billing_company') return createBillingCompanySummaryRows(data)
   return { headers: ['項目', '工数'], rows: [] }
@@ -494,24 +483,6 @@ function createSeibanDetailRows(data) {
   }
 }
 
-function createEquipmentSummaryRows(data) {
-  const map = {}
-  data.forEach(row => {
-    const equipment = row.seiban_master?.equipment_name || '不明'
-    if (!map[equipment]) map[equipment] = 0
-    map[equipment] += row.actual_minutes || 0
-  })
-
-  return {
-    headers: ['設備名', '実働分', '実働時間'],
-    rows: Object.entries(map).map(([equipment, minutes]) => [
-      equipment,
-      minutes,
-      minutesToHM(minutes)
-    ])
-  }
-}
-
 function createDailySummaryRows(data) {
   const map = {}
   data.forEach(row => {
@@ -549,28 +520,6 @@ function createMonthlySummaryRows(data) {
   }
 }
 
-function createWorkerDailySummaryRows(data) {
-  const map = {}
-  data.forEach(row => {
-    const worker = workerNameMap[row.worker_id] || '作業者未設定'
-    const key = `${row.work_date}__${worker}`
-    if (!map[key]) map[key] = { date: row.work_date, worker, minutes: 0, count: 0 }
-    map[key].minutes += row.actual_minutes || 0
-    map[key].count += 1
-  })
-
-  return {
-    headers: ['日付', '作業者', '件数', '実働分', '実働時間'],
-    rows: Object.values(map).map(row => [
-      row.date,
-      row.worker,
-      row.count,
-      row.minutes,
-      minutesToHM(row.minutes)
-    ])
-  }
-}
-
 function createWorkerSummaryRows(data) {
   const map = {}
   data.forEach(row => {
@@ -586,53 +535,6 @@ function createWorkerSummaryRows(data) {
       minutes,
       minutesToHM(minutes)
     ])
-  }
-}
-
-function createWorkerEquipmentSummaryRows(data, from, to) {
-  const map = {}
-  data.forEach(row => {
-    const worker = workerNameMap[row.worker_id] || '作業者未設定'
-    const seiban = row.seiban_master?.seiban || '不明'
-    const equipment = row.seiban_master?.equipment_name || '不明'
-    const key = `${worker}__${seiban}__${equipment}`
-
-    if (!map[key]) {
-      map[key] = {
-        from,
-        to,
-        worker,
-        seiban,
-        equipment,
-        count: 0,
-        minutes: 0
-      }
-    }
-
-    map[key].count += 1
-    map[key].minutes += row.actual_minutes || 0
-  })
-
-  const rows = Object.values(map)
-    .sort((a, b) => (
-      a.worker.localeCompare(b.worker, 'ja') ||
-      a.seiban.localeCompare(b.seiban, 'ja') ||
-      a.equipment.localeCompare(b.equipment, 'ja')
-    ))
-    .map(row => [
-      row.from,
-      row.to,
-      row.worker,
-      row.seiban,
-      row.equipment,
-      row.count,
-      row.minutes,
-      minutesToHM(row.minutes)
-    ])
-
-  return {
-    headers: ['開始日', '終了日', '作業者', '設備番号(製番)', '設備名', '件数', '実働分', '実働時間'],
-    rows
   }
 }
 
@@ -916,25 +818,6 @@ function renderSeibanDetail(data) {
   document.getElementById('summary_table').innerHTML = html
 }
 
-function renderEquipment(data) {
-  const map = {}
-  data.forEach(row => {
-    const equipment = row.seiban_master?.equipment_name || '不明'
-    if (!map[equipment]) map[equipment] = 0
-    map[equipment] += row.actual_minutes || 0
-  })
-
-  let html = '<table><tr><th>設備名</th><th>工数</th></tr>'
-  let total = 0
-  Object.entries(map).forEach(([equipment, minutes]) => {
-    html += `<tr><td>${escapeHtml(equipment)}</td><td>${minutesToHM(minutes)}</td></tr>`
-    total += minutes
-  })
-  html += `<tr class="total-row"><td>合計</td><td>${minutesToHM(total)}</td></tr>`
-  html += '</table>'
-  document.getElementById('summary_table').innerHTML = html
-}
-
 function renderDaily(data) {
   const map = {}
   data.forEach(row => {
@@ -976,36 +859,6 @@ function renderMonthly(data) {
   document.getElementById('summary_table').innerHTML = html
 }
 
-function renderWorkerDaily(data) {
-  const map = {}
-  data.forEach(row => {
-    const worker = workerNameMap[row.worker_id] || '作業者未設定'
-    const key = `${row.work_date}__${worker}`
-    if (!map[key]) {
-      map[key] = {
-        date: row.work_date,
-        worker,
-        minutes: 0,
-        count: 0
-      }
-    }
-    map[key].minutes += row.actual_minutes || 0
-    map[key].count += 1
-  })
-
-  let html = '<table><tr><th>日付</th><th>作業者</th><th>件数</th><th>工数</th></tr>'
-  let totalMinutes = 0
-  let totalCount = 0
-  Object.values(map).forEach(row => {
-    html += `<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.worker)}</td><td>${row.count}件</td><td>${minutesToHM(row.minutes)}</td></tr>`
-    totalMinutes += row.minutes
-    totalCount += row.count
-  })
-  html += `<tr class="total-row"><td colspan="2">合計</td><td>${totalCount}件</td><td>${minutesToHM(totalMinutes)}</td></tr>`
-  html += '</table>'
-  document.getElementById('summary_table').innerHTML = html
-}
-
 function renderWorker(data) {
   const map = {}
   data.forEach(row => {
@@ -1025,5 +878,6 @@ function renderWorker(data) {
   document.getElementById('summary_table').innerHTML = html
 }
 
+updateSummaryCsvOption()
 await loadFilterOptions()
 window.loadData()
