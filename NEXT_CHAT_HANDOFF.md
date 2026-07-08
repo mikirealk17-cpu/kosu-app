@@ -71,6 +71,13 @@
 - CSV出力を「明細CSV」「表示中の集計CSV」「請求確認CSV」に整理
 - ログイン・権限管理の設計書を追加
 - ログイン・権限管理用のSQL案を追加
+- 工数管理版として一旦商品化する方針に合わせ、管理画面から単価管理を通常導線から外した
+- 集計画面のCSV選択から請求確認CSVを外した
+- 工数入力画面と入力履歴編集画面から元請け・単価区分を通常入力項目として外した
+- 上記変更を `e777cc6 Hide billing features for work tracking release` としてコミットし、本番Vercelへ反映済み
+- 未追跡の空ファイル `main` を削除し、作業ツリーを整理した
+- 明細CSVと表示中集計CSVについて、2026-06-26〜2026-07-03の実データ8件をSupabase RESTで取得し、金額列なしの列構成で出力対象データが読めることを確認した
+- ブラウザ操作ツールでのCSVダウンロード実操作は、本番ページ読み込みがタイムアウトしたため未完了。PCブラウザでの目視ダウンロード確認は次回以降に残す
 
 ## 現在残っている重要な注意点
 
@@ -108,13 +115,12 @@
 
 商品化第一段階として、次は以下の順番が安全。
 
-1. 管理画面から「単価管理」を通常導線から外す、または準備中表示にする
-2. 集計画面のCSV選択から「請求確認CSV」を一旦隠す、または管理者向け準備中にする
-3. 工数入力画面で「元請け」「単価区分」が本当に必要か再確認する
-4. 工数管理版として必要なCSVだけに絞る
-5. README、PROJECT、TODO、CHANGELOGを「工数管理版優先」の内容に更新する
-6. iPhone実機で工数入力、履歴編集、集計、CSVを確認する
-7. 商品化前のチェックリストを作る
+1. 明細CSVと表示中集計CSVをPCブラウザから実際にダウンロードし、列と内容を目視確認する
+2. iPhone実機で工数入力、履歴編集、集計、CSVの横はみ出しや操作感を確認する
+3. 作業者追加、作業内容追加、製番追加、工数入力、履歴編集、削除、集計表示、CSV出力を通し確認する
+4. Supabaseの匿名ユーザー権限を確認し、工数管理版で不要な金額系テーブル・列が通常利用者に見えすぎていないか確認する
+5. `billing-companies.html` の元請け管理と、集計画面の「元請け別」タブを第1段階に残すか判断する
+6. 商品化前チェックリストを `RELEASE_CHECKLIST.md` などに作る
 
 おすすめ方針:
 
@@ -125,28 +131,22 @@
 
 ## 直近コミット
 
+- `e777cc6 Hide billing features for work tracking release`
+- `8d07185 Add next chat handoff notes`
 - `581e00b Add auth permission SQL draft`
 - `e48ecaf Add auth permission design`
 - `0b7d2c6 Simplify summary tabs and CSV options`
-- `871c169 Remove root company from rate flow`
-- `166df38 Fix mobile pull overscroll save button`
 
 注意:
 
-- `581e00b` はローカルコミット済み。
-- GitHubへpush済みかは、新しいチャットで `git status` と `git log -1 --oneline` を確認する。
-- pushされていない場合は、PC側で以下を実行する。
-
-```bash
-cd /Users/katomikihiko/kosu-app
-git push origin main
-```
+- `e777cc6` はGitHubへpush済みで、本番Vercelにも反映済み。
+- `Update next chat handoff` はローカルコミット済み。こちらの環境ではGitHub認証が読めずpushできなかったため、PC側ターミナルで `git push origin main` が必要。
+- 新しいチャットでは `git status --short` と `git log -1 --oneline` を確認してから作業する。
 
 ## 未追跡ファイル
 
-現在、`main` という未追跡の空ファイルがある。
-今回の作業では触っていない。
-必要性が確認できるまで削除しない。
+以前あった `main` という未追跡の空ファイルは削除済み。
+新しいチャットでは `git status --short` が空に近い状態か確認する。
 
 ## 作業ルール
 
@@ -162,5 +162,5 @@ git push origin main
 
 ```text
 /Users/katomikihiko/kosu-app/NEXT_CHAT_HANDOFF.md を読んで、工数管理版として一旦商品化する方針で続きを進めてください。
-まずは単価管理と請求確認CSVを通常導線から外す安全な方法を提案し、必要なら実装してください。
+まずは明細CSVと表示中集計CSVの実ダウンロード確認、iPhone実機確認、基本操作の通し確認から進めてください。
 ```
