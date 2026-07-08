@@ -5,6 +5,9 @@ import {
   isContractRate
 } from './rate-utils.js'
 
+const BILLING_INPUT_ENABLED = false
+const RATE_INPUT_ENABLED = false
+
 let workerFeatureEnabled = false
 let billingCompanyFeatureEnabled = false
 let rateFeatureEnabled = false
@@ -159,8 +162,8 @@ function timeToMinutes(time) {
 // 保存する
 async function saveLog() {
   const workerId = document.getElementById('worker').value
-  const billingCompanyId = document.getElementById('billing_company').value
-  const rateType = document.getElementById('rate_type').value
+  const billingCompanyId = BILLING_INPUT_ENABLED ? document.getElementById('billing_company').value : ''
+  const rateType = RATE_INPUT_ENABLED ? document.getElementById('rate_type').value : ''
   const seiban = document.getElementById('seiban').value.trim()
   const equipmentName = document.getElementById('equipment_name').value.trim()
   const workTypeId = document.getElementById('work_type').value
@@ -181,12 +184,12 @@ async function saveLog() {
     return
   }
 
-  if (billingCompanyFeatureEnabled && !billingCompanyId) {
+  if (BILLING_INPUT_ENABLED && billingCompanyFeatureEnabled && !billingCompanyId) {
     showMessage('⚠️ 元請けを選択してください', 'error')
     return
   }
 
-  if (rateFeatureEnabled && (!billingCompanyId || !rateType)) {
+  if (RATE_INPUT_ENABLED && rateFeatureEnabled && (!billingCompanyId || !rateType)) {
     showMessage('⚠️ 元請け・単価区分を選択してください', 'error')
     return
   }
@@ -237,7 +240,7 @@ async function saveLog() {
   }
 
   let appliedRate = null
-  if (rateFeatureEnabled) {
+  if (RATE_INPUT_ENABLED && rateFeatureEnabled) {
     appliedRate = await findApplicableRate({
       billingCompanyId,
       workerId,
@@ -267,11 +270,11 @@ async function saveLog() {
   }
 
   // DB側にbilling_company_id列がある場合だけ、入力時点の元請けを保存します。
-  if (billingCompanyFeatureEnabled) {
+  if (BILLING_INPUT_ENABLED && billingCompanyFeatureEnabled) {
     logData.billing_company_id = billingCompanyId
   }
 
-  if (rateFeatureEnabled && appliedRate) {
+  if (RATE_INPUT_ENABLED && rateFeatureEnabled && appliedRate) {
     logData.rate_type = rateType
     logData.rate_master_id = appliedRate.id
     logData.unit_price = appliedRate.amount
@@ -286,7 +289,7 @@ async function saveLog() {
     console.error('工数の保存に失敗しました', error)
     showMessage('❌ 保存に失敗しました', 'error')
   } else {
-    rememberBillingCompany(workerId, billingCompanyId)
+    if (BILLING_INPUT_ENABLED) rememberBillingCompany(workerId, billingCompanyId)
     showMessage('✓ 保存しました', 'success')
     resetFormForNextInput()
   }
@@ -380,6 +383,7 @@ document.getElementById('end_time').addEventListener('blur', () => formatTimeFie
 document.getElementById('break1').addEventListener('input', () => handleNumericInput('break1'))
 document.getElementById('break2').addEventListener('input', () => handleNumericInput('break2'))
 document.getElementById('worker').addEventListener('change', () => {
+  if (!BILLING_INPUT_ENABLED) return
   applyLastBillingCompany(document.getElementById('worker').value)
 })
 
@@ -425,6 +429,12 @@ async function loadWorkers() {
 async function loadBillingCompanies() {
   const select = document.getElementById('billing_company')
   select.innerHTML = ''
+
+  if (!BILLING_INPUT_ENABLED) {
+    billingCompanyFeatureEnabled = false
+    select.disabled = true
+    return
+  }
 
   const emptyOption = document.createElement('option')
   emptyOption.value = ''
@@ -494,6 +504,13 @@ async function checkRateFeature() {
   fillRateTypeSelect(document.getElementById('rate_type'))
 
   const rateSelect = document.getElementById('rate_type')
+
+  if (!RATE_INPUT_ENABLED) {
+    rateFeatureEnabled = false
+    rateSelect.disabled = true
+    return
+  }
+
   const [{ error: rateError }, { error: logError }] = await Promise.all([
     supabase.from('rate_master').select('id').limit(1),
     supabase.from('work_logs').select('rate_type, rate_master_id, unit_price, billing_amount').limit(1)

@@ -5,6 +5,8 @@ import {
   isContractRate
 } from './rate-utils.js'
 
+const RATE_EDIT_ENABLED = false
+
 let logs = []
 let editingLog = null
 let workerFeatureEnabled = false
@@ -108,15 +110,17 @@ async function loadWorkers() {
 async function checkRateFeature() {
   fillRateTypeSelect(document.getElementById('edit_rate_type'))
 
+  if (!RATE_EDIT_ENABLED) {
+    rateFeatureEnabled = false
+    return
+  }
+
   const [{ error: rateError }, { error: logError }] = await Promise.all([
     supabase.from('rate_master').select('id').limit(1),
     supabase.from('work_logs').select('billing_company_id, rate_type, rate_master_id, unit_price, billing_amount').limit(1)
   ])
 
   rateFeatureEnabled = !rateError && !logError
-  document.getElementById('edit_rate_group').style.display = rateFeatureEnabled ? '' : 'none'
-  document.getElementById('edit_rate_type_group').style.display = rateFeatureEnabled ? '' : 'none'
-
   if (!rateFeatureEnabled) return
 
   await loadBillingCompanyOptions()

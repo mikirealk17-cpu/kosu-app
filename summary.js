@@ -1,6 +1,8 @@
 import { supabase } from './supabaseClient.js'
 import { getRateTypeLabel, isContractRate } from './rate-utils.js'
 
+const BILLING_COMPANY_CSV_ENABLED = false
+
 let currentTab = 'seiban'
 let workerNameMap = {}
 let billingCompanyNameMap = {}
@@ -257,7 +259,12 @@ window.exportCsv = async function() {
     if (csvType === 'summary') {
       success = await exportSummaryCsv()
     } else if (csvType === 'billing_company') {
-      success = await exportBillingCompanyCsv()
+      if (!BILLING_COMPANY_CSV_ENABLED) {
+        alert('請求確認CSVは工数管理版では通常出力から外しています')
+        success = false
+      } else {
+        success = await exportBillingCompanyCsv()
+      }
     } else {
       success = await exportDetailCsv()
     }

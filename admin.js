@@ -5,8 +5,7 @@ const countTargets = [
   { id: 'count_work_types', table: 'work_type_master', label: '作業内容' },
   { id: 'count_seibans', table: 'seiban_master', label: '製番' },
   { id: 'count_logs', table: 'work_logs', label: '工数記録' },
-  { id: 'count_billing_companies', table: 'billing_company_master', label: '元請け' },
-  { id: 'count_rates', table: 'rate_master', label: '単価' }
+  { id: 'count_billing_companies', table: 'billing_company_master', label: '元請け' }
 ]
 
 async function loadAdminCounts() {
