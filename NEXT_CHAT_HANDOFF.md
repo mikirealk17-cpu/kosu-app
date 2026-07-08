@@ -133,16 +133,16 @@
 
 ## 直近コミット
 
+- `d47bee7 Add release checklist`
+- `51e186b Update next chat handoff`
 - `e777cc6 Hide billing features for work tracking release`
 - `8d07185 Add next chat handoff notes`
 - `581e00b Add auth permission SQL draft`
-- `e48ecaf Add auth permission design`
-- `0b7d2c6 Simplify summary tabs and CSV options`
 
 注意:
 
 - `e777cc6` はGitHubへpush済みで、本番Vercelにも反映済み。
-- `Update next chat handoff` はローカルコミット済み。こちらの環境ではGitHub認証が読めずpushできなかったため、PC側ターミナルで `git push origin main` が必要。
+- `d47bee7` までGitHubへpush済みで、`NEXT_CHAT_HANDOFF.md` と `RELEASE_CHECKLIST.md` も本番Vercelで取得できることを確認済み。
 - 新しいチャットでは `git status --short` と `git log -1 --oneline` を確認してから作業する。
 
 ## 未追跡ファイル
