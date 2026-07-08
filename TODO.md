@@ -39,11 +39,23 @@
 
 ## 次に確認すること
 
-- `SUPABASE_RATE_SETUP.sql` を再実行し、元請けマスタ・単価マスタの大元請け必須を解除する
+### 優先度高
+
+- Supabase SQL Editorで `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を実行し、公開キーから金額系データを読めない状態にする
+- SQL実行後、公開キーで `rate_master` と `work_logs.rate_type` / `rate_master_id` / `unit_price` / `billing_amount` が読めないことを確認する
+- SQL実行後、工数入力、履歴編集、集計、明細CSV、表示中集計CSVが壊れていないことを確認する
 - 明細CSVと表示中集計CSVをPCブラウザから実際にダウンロードし、列を目視確認する
 - iPhone実機で工数入力、集計、履歴編集の横はみ出しを確認する
-- 既存の集計、履歴編集、CSV出力が壊れていないことを確認する
-- 工数管理版として公開する前に、公開キーから `rate_master` と金額系列を読めないようにするか判断する
+
+### 優先度中
+
+- 作業者追加、作業内容追加、製番追加、工数入力、履歴編集、削除、集計表示、CSV出力を一通り確認する
+- 第1段階で元請け管理画面を残すか決める
+- 第1段階で集計画面の元請け別タブを残すか決める
+
+### 優先度低
+
+- `SUPABASE_RATE_SETUP.sql` を再実行し、元請けマスタ・単価マスタの大元請け必須を解除する
 - `AUTH_PERMISSION_DESIGN.md` の権限区分が実運用に合うか確認する
 - `SUPABASE_AUTH_PERMISSION_SETUP.sql` を実行する前に、会社単位と作業者単位の閲覧範囲を確認する
 - Supabase Authのログイン方式を決める

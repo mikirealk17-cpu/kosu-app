@@ -400,7 +400,7 @@ async function exportBillingCompanyCsv() {
   let data
 
   try {
-    data = await fetchBillingCompanyRows()
+    data = await fetchBillingInvoiceRows()
     await Promise.all([
       loadWorkerNameMap(),
       loadBillingCompanyNameMap()
@@ -705,6 +705,42 @@ async function fetchBillingCompanyRows() {
       worker_id,
       seiban_id,
       billing_company_id,
+      seiban_master (
+        seiban,
+        equipment_name
+      ),
+      work_type_master (
+        name
+      )
+    `)
+    .gte('work_date', from)
+    .lte('work_date', to)
+    .order('work_date')
+
+  query = applyFilters(query, filters)
+
+  const { data, error } = await query
+
+  if (error || !data) {
+    throw error || new Error('元請け別集計データの取得に失敗しました')
+  }
+
+  return data
+}
+
+async function fetchBillingInvoiceRows() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  const filters = getFilters()
+
+  let query = supabase
+    .from('work_logs')
+    .select(`
+      actual_minutes,
+      work_date,
+      worker_id,
+      seiban_id,
+      billing_company_id,
       rate_type,
       rate_master_id,
       unit_price,
@@ -726,7 +762,7 @@ async function fetchBillingCompanyRows() {
   const { data, error } = await query
 
   if (error || !data) {
-    throw error || new Error('元請け別集計データの取得に失敗しました')
+    throw error || new Error('請求確認CSV出力データの取得に失敗しました')
   }
 
   return data
