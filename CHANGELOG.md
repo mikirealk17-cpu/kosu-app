@@ -5,6 +5,7 @@
 - 集計画面から設備別、作業者日別、作業者別設備CSVを外し、CSV出力を明細・表示中集計・請求確認に整理
 - ログイン・権限管理の将来設計を `AUTH_PERMISSION_DESIGN.md` に追加
 - ログイン・権限管理用のSupabase SQL案 `SUPABASE_AUTH_PERMISSION_SETUP.sql` を追加
+- 次チャットで経緯を追えるように `NEXT_CHAT_HANDOFF.md` を追加
 
 ## 2026-07-01
 
