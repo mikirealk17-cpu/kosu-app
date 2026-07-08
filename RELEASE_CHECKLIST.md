@@ -12,7 +12,9 @@
 - [x] Supabase SQL Editorで `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を実行する
 - [x] 公開キーから `rate_master` が読めないことを確認する
 - [x] 公開キーから `work_logs.rate_type` / `rate_master_id` / `unit_price` / `billing_amount` が読めないことを確認する
-- [ ] 権限変更後も工数入力、履歴編集、集計、明細CSV、表示中集計CSVが動くことを確認する
+- [x] 権限変更後も工数の追加・更新・削除が動くことを確認する
+- [x] 権限変更後も履歴画面と集計画面がエラーなく表示されることを確認する
+- [x] 製番別・製番明細・日別・月別・作業者別・元請け別の全タブが表示できることを確認する
 
 ## 確認済み
 
