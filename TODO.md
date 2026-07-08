@@ -41,8 +41,8 @@
 
 ### 優先度高
 
-- Supabase SQL Editorで `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を実行し、公開キーから金額系データを読めない状態にする
-- SQL実行後、公開キーで `rate_master` と `work_logs.rate_type` / `rate_master_id` / `unit_price` / `billing_amount` が読めないことを確認する
+- [完了] Supabase SQL Editorで `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を実行し、公開キーから金額系データを読めない状態にする
+- [完了] SQL実行後、公開キーで `rate_master` と `work_logs.rate_type` / `rate_master_id` / `unit_price` / `billing_amount` が読めないことを確認する
 - SQL実行後、工数入力、履歴編集、集計、明細CSV、表示中集計CSVが壊れていないことを確認する
 - 明細CSVと表示中集計CSVをPCブラウザから実際にダウンロードし、列を目視確認する
 - iPhone実機で工数入力、集計、履歴編集の横はみ出しを確認する

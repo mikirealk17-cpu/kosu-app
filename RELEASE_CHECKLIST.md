@@ -9,9 +9,9 @@
 - [ ] iPhone実機で工数入力、履歴編集、集計画面の横はみ出しを確認する
 - [ ] iPhone実機で保存ボタン、更新ボタン、CSV出力ボタンが押しやすいことを確認する
 - [ ] 作業者追加、作業内容追加、製番追加、工数入力、履歴編集、削除、集計表示、CSV出力を一通り確認する
-- [ ] Supabase SQL Editorで `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を実行する
-- [ ] 公開キーから `rate_master` が読めないことを確認する
-- [ ] 公開キーから `work_logs.rate_type` / `rate_master_id` / `unit_price` / `billing_amount` が読めないことを確認する
+- [x] Supabase SQL Editorで `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を実行する
+- [x] 公開キーから `rate_master` が読めないことを確認する
+- [x] 公開キーから `work_logs.rate_type` / `rate_master_id` / `unit_price` / `billing_amount` が読めないことを確認する
 - [ ] 権限変更後も工数入力、履歴編集、集計、明細CSV、表示中集計CSVが動くことを確認する
 
 ## 確認済み
@@ -25,6 +25,7 @@
 - [x] 公開キーで `rate_master` と `work_logs` の金額系列が読めることを確認した
 - [x] 元請け別集計の表示用クエリから金額列を外し、請求確認CSV専用クエリと分離した
 - [x] 匿名ユーザーから金額系データを隠すための `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を追加した
+- [x] 権限変更後も通常の工数列を公開キーで取得できることを確認した
 
 ## 要判断
 

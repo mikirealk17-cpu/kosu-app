@@ -81,7 +81,9 @@
 - 公開キーで `rate_master` と `work_logs` の `unit_price` / `billing_amount` が読めることを確認した。画面からは外れているが、商品化第一段階ではDB権限面の要判断事項
 - 商品化前チェックリスト `RELEASE_CHECKLIST.md` を追加した
 - 元請け別集計の表示用クエリから金額列を外し、請求確認CSV専用の金額クエリと分離した
-- 匿名ユーザーから金額系データを隠すための `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を追加した。まだSupabase SQL Editorでは未実行
+- 匿名ユーザーから金額系データを隠すための `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を追加し、2026-07-09にSupabase SQL Editorで実行した
+- SQL実行後、公開キーで `rate_master` と `work_logs` の金額列を取得すると `401 permission denied` になることを確認した
+- SQL実行後も通常の工数列は公開キーで `200` になり、取得を継続できることを確認した
 
 ## 現在残っている重要な注意点
 
@@ -119,13 +121,12 @@
 
 商品化第一段階として、次は以下の順番が安全。
 
-1. Supabase SQL Editorで `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を実行し、公開キーから金額系データを読めない・書けない状態にする
-2. SQL実行後、工数入力、履歴編集、集計、明細CSV、表示中集計CSVが壊れていないことを確認する
-3. 明細CSVと表示中集計CSVをPCブラウザから実際にダウンロードし、列と内容を目視確認する
-4. iPhone実機で工数入力、履歴編集、集計、CSVの横はみ出しや操作感を確認する
-5. 作業者追加、作業内容追加、製番追加、工数入力、履歴編集、削除、集計表示、CSV出力を通し確認する
-6. `billing-companies.html` の元請け管理と、集計画面の「元請け別」タブを第1段階に残すか判断する
-7. `RELEASE_CHECKLIST.md` に沿って商品化前確認を進める
+1. 権限変更後も工数入力、履歴編集、集計、明細CSV、表示中集計CSVが壊れていないことを確認する
+2. 明細CSVと表示中集計CSVをPCブラウザから実際にダウンロードし、列と内容を目視確認する
+3. iPhone実機で工数入力、履歴編集、集計、CSVの横はみ出しや操作感を確認する
+4. 作業者追加、作業内容追加、製番追加、工数入力、履歴編集、削除、集計表示、CSV出力を通し確認する
+5. `billing-companies.html` の元請け管理と、集計画面の「元請け別」タブを第1段階に残すか判断する
+6. `RELEASE_CHECKLIST.md` に沿って商品化前確認を進める
 
 おすすめ方針:
 
@@ -168,5 +169,5 @@
 
 ```text
 /Users/katomikihiko/kosu-app/NEXT_CHAT_HANDOFF.md を読んで、工数管理版として一旦商品化する方針で続きを進めてください。
-まずは `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` の実行と、実行後の工数入力・履歴編集・集計・CSV確認から進めてください。
+まずは権限変更後の工数入力・履歴編集・集計・CSV確認から進めてください。金額系データの公開遮断は確認済みです。
 ```
