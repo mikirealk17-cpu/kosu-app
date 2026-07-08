@@ -16,6 +16,7 @@
 - CSSは共通、フォーム、ボタン、集計、履歴、管理、スマホ対応の役割ごとに整理する
 
 将来のログイン・権限管理は `AUTH_PERMISSION_DESIGN.md` に整理しています。
+DB側の下準備SQL案は `SUPABASE_AUTH_PERMISSION_SETUP.sql` に分けています。
 金額を扱うため、実装時は画面制御だけでなくSupabase RLSで閲覧範囲を制限します。
 
 ## 画面
@@ -38,12 +39,16 @@
 - `worker_master`: 作業者マスタ
 - `billing_company_master`: 元請けマスタ
 - `rate_master`: 単価マスタ
+- `company_master`: 所属会社マスタ
+- `user_profiles`: ログインユーザーと権限の紐づけ
 
 2026-07-01時点で、現在接続中のSupabaseには作業者、元請け、単価自動適用に必要なテーブルと列が反映済みです。
 新規環境へ設定する場合は、`SUPABASE_SETUP.sql` と `SUPABASE_RATE_SETUP.sql` をSupabase SQL Editorで実行します。
 元請け対応だけを追加したい場合は、`SUPABASE_BILLING_COMPANY_SETUP.sql` を実行します。
 これらのSQLは既存の工数データを自動変換せず、過去データを勝手に変更しない方針です。
 旧版で追加した大元請けテーブルや列は、データ破損を避けるため削除せず、現行画面・単価判定では使いません。
+ログイン・権限管理用のSQL案は `SUPABASE_AUTH_PERMISSION_SETUP.sql` にあります。
+このSQL案では、会社マスタとユーザープロフィール、既存テーブルの `company_id` 列を追加するだけに留め、RLSの有効化は別段階にします。
 
 SQL実行後の動き:
 
