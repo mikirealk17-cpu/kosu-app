@@ -92,10 +92,14 @@ window.loadData = async function() {
 }
 
 function updateSummaryCsvOption() {
-  const option = document.getElementById('summary_csv_option')
-  if (!option) return
+  const csvOption = document.getElementById('summary_csv_option')
+  const excelOption = document.getElementById('summary_excel_option')
 
-  option.textContent = summaryCsvLabels[currentTab] || '表示中の集計CSV'
+  if (csvOption) csvOption.textContent = summaryCsvLabels[currentTab] || '表示中の集計CSV'
+  if (excelOption) {
+    const label = (summaryCsvLabels[currentTab] || '表示中の集計CSV').replace('CSV', 'Excel')
+    excelOption.textContent = label
+  }
 }
 
 function formatDate(date) {
@@ -246,7 +250,7 @@ async function loadSeibanOptions() {
 
 window.exportCsv = async function() {
   const button = document.querySelector('.csv-actions button')
-  const originalText = button?.textContent || 'CSV出力'
+  const originalText = button?.textContent || 'ファイル出力'
   if (button) {
     button.disabled = true
     button.textContent = '出力中...'
@@ -258,6 +262,10 @@ window.exportCsv = async function() {
     let success
     if (csvType === 'summary') {
       success = await exportSummaryCsv()
+    } else if (csvType === 'summary_excel') {
+      success = await exportSummaryExcel()
+    } else if (csvType === 'detail_excel') {
+      success = await exportDetailExcel()
     } else if (csvType === 'billing_company') {
       if (!BILLING_COMPANY_CSV_ENABLED) {
         alert('請求確認CSVは工数管理版では通常出力から外しています')
@@ -320,17 +328,39 @@ async function fetchSummaryRows() {
 }
 
 async function exportDetailCsv() {
-  const from = document.getElementById('date_from').value
-  const to = document.getElementById('date_to').value
-  let data
+  let exportRows
 
   try {
-    data = await fetchSummaryRows()
+    exportRows = await createDetailExportRows()
   } catch (error) {
     console.error('明細CSV出力データの取得に失敗しました', error)
     alert('明細CSV出力データの取得に失敗しました')
     return false
   }
+
+  downloadCsv(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.csv`)
+  return true
+}
+
+async function exportDetailExcel() {
+  let exportRows
+
+  try {
+    exportRows = await createDetailExportRows()
+  } catch (error) {
+    console.error('明細Excel出力データの取得に失敗しました', error)
+    alert('明細Excel出力データの取得に失敗しました')
+    return false
+  }
+
+  downloadExcel(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.xls`)
+  return true
+}
+
+async function createDetailExportRows() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  const data = await fetchSummaryRows()
 
   await loadWorkerNameMap()
 
@@ -364,34 +394,65 @@ async function exportDetailCsv() {
     row.note || ''
   ])
 
-  downloadCsv(headers, rows, `kosu_detail_${from}_${to}.csv`)
-  return true
+  return {
+    headers,
+    rows,
+    filenameBase: `kosu_detail_${from}_${to}`
+  }
 }
 
 async function exportSummaryCsv() {
-  const from = document.getElementById('date_from').value
-  const to = document.getElementById('date_to').value
-  let data
+  let exportRows
 
   try {
-    if (currentTab === 'billing_company') {
-      data = await fetchBillingCompanyRows()
-      await loadBillingCompanyNameMap()
-    } else {
-      data = await fetchSummaryRows()
-    }
+    exportRows = await createSummaryExportRows()
   } catch (error) {
     console.error('集計CSV出力データの取得に失敗しました', error)
     alert('集計CSV出力データの取得に失敗しました')
     return false
   }
 
+  downloadCsv(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.csv`)
+  return true
+}
+
+async function exportSummaryExcel() {
+  let exportRows
+
+  try {
+    exportRows = await createSummaryExportRows()
+  } catch (error) {
+    console.error('集計Excel出力データの取得に失敗しました', error)
+    alert('集計Excel出力データの取得に失敗しました')
+    return false
+  }
+
+  downloadExcel(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.xls`)
+  return true
+}
+
+async function createSummaryExportRows() {
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  let data
+
+  if (currentTab === 'billing_company') {
+    data = await fetchBillingCompanyRows()
+    await loadBillingCompanyNameMap()
+  } else {
+    data = await fetchSummaryRows()
+  }
+
   if (currentTab !== 'billing_company') {
     await loadWorkerNameMap()
   }
   const { headers, rows } = createSummaryCsvRows(data)
-  downloadCsv(headers, rows, `kosu_summary_${currentTab}_${from}_${to}.csv`)
-  return true
+
+  return {
+    headers,
+    rows,
+    filenameBase: `kosu_summary_${currentTab}_${from}_${to}`
+  }
 }
 
 async function exportBillingCompanyCsv() {
@@ -434,6 +495,72 @@ function downloadCsv(headers, rows, filename) {
     ...rows.map(row => row.map(escapeCsv).join(','))
   ].join('\n')
   const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+function downloadExcel(headers, rows, filename) {
+  const colWidths = getExcelColumnWidths(headers)
+  const colgroup = colWidths.map(width => `<col style="width: ${width}px;">`).join('')
+  const headerHtml = headers
+    .map(header => `<th>${escapeHtml(header)}</th>`)
+    .join('')
+  const rowsHtml = rows
+    .map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell ?? '')}</td>`).join('')}</tr>`)
+    .join('')
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    table { border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; }
+    th { background: #f2f4f7; font-weight: 700; }
+    th, td { border: 1px solid #c9d1dc; padding: 6px 8px; mso-number-format:"\\@"; vertical-align: top; white-space: nowrap; }
+    td:last-child { white-space: normal; }
+  </style>
+</head>
+<body>
+  <table>
+    <colgroup>${colgroup}</colgroup>
+    <thead><tr>${headerHtml}</tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+</body>
+</html>`.trim()
+
+  const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+  downloadBlob(blob, filename)
+}
+
+function getExcelColumnWidths(headers) {
+  const widthMap = {
+    '日付': 110,
+    '作業者': 140,
+    '製番': 130,
+    '設備名': 220,
+    '作業内容': 180,
+    '開始時間': 90,
+    '終了時間': 90,
+    '休憩1分': 80,
+    '休憩2分': 80,
+    '実働分': 80,
+    '実働時間': 100,
+    '備考': 280,
+    '月': 100,
+    '件数': 80
+  }
+
+  return headers.map(header => widthMap[header] || 130)
+}
+
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
