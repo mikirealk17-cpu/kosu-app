@@ -374,7 +374,6 @@ async function createDetailExportRows() {
     '終了時間',
     '休憩1分',
     '休憩2分',
-    '実働分',
     '実働時間',
     '備考'
   ]
@@ -389,7 +388,6 @@ async function createDetailExportRows() {
     formatTime(row.end_time),
     row.break1_minutes || 0,
     row.break2_minutes || 0,
-    row.actual_minutes || 0,
     minutesToHM(row.actual_minutes || 0),
     row.note || ''
   ])
@@ -550,7 +548,6 @@ function getExcelColumnWidths(headers) {
     '終了時間': 90,
     '休憩1分': 80,
     '休憩2分': 80,
-    '実働分': 80,
     '実働時間': 100,
     '備考': 280,
     '月': 100,
@@ -591,11 +588,10 @@ function createSeibanSummaryRows(data) {
   })
 
   return {
-    headers: ['製番', '設備名', '実働分', '実働時間'],
+    headers: ['製番', '設備名', '実働時間'],
     rows: Object.entries(map).map(([seiban, val]) => [
       seiban,
       val.equipment,
-      val.minutes,
       minutesToHM(val.minutes)
     ])
   }
@@ -603,7 +599,7 @@ function createSeibanSummaryRows(data) {
 
 function createSeibanDetailRows(data) {
   return {
-    headers: ['日付', '製番', '設備名', '作業者', '開始時間', '終了時間', '実働分', '実働時間'],
+    headers: ['日付', '製番', '設備名', '作業者', '開始時間', '終了時間', '実働時間'],
     rows: data.map(row => [
       row.work_date,
       row.seiban_master?.seiban || '',
@@ -611,7 +607,6 @@ function createSeibanDetailRows(data) {
       workerNameMap[row.worker_id] || '',
       formatTime(row.start_time),
       formatTime(row.end_time),
-      row.actual_minutes || 0,
       minutesToHM(row.actual_minutes || 0)
     ])
   }
@@ -625,10 +620,9 @@ function createDailySummaryRows(data) {
   })
 
   return {
-    headers: ['日付', '実働分', '実働時間'],
+    headers: ['日付', '実働時間'],
     rows: Object.entries(map).map(([date, minutes]) => [
       date,
-      minutes,
       minutesToHM(minutes)
     ])
   }
@@ -644,11 +638,10 @@ function createMonthlySummaryRows(data) {
   })
 
   return {
-    headers: ['月', '件数', '実働分', '実働時間'],
+    headers: ['月', '件数', '実働時間'],
     rows: Object.entries(map).map(([month, val]) => [
       month,
       val.count,
-      val.minutes,
       minutesToHM(val.minutes)
     ])
   }
@@ -663,10 +656,9 @@ function createWorkerSummaryRows(data) {
   })
 
   return {
-    headers: ['作業者', '実働分', '実働時間'],
+    headers: ['作業者', '実働時間'],
     rows: Object.entries(map).map(([worker, minutes]) => [
       worker,
-      minutes,
       minutesToHM(minutes)
     ])
   }
@@ -682,11 +674,10 @@ function createBillingCompanySummaryRows(data) {
   })
 
   return {
-    headers: ['元請け', '件数', '実働分', '実働時間'],
+    headers: ['元請け', '件数', '実働時間'],
     rows: Object.entries(map).map(([company, val]) => [
       company,
       val.count,
-      val.minutes,
       minutesToHM(val.minutes)
     ])
   }
@@ -760,7 +751,6 @@ function createBillingCompanyInvoiceRows(data, from, to) {
         row.equipment,
         row.workType,
         row.count,
-        row.minutes,
         minutesToHM(row.minutes),
         minutesToDecimalHours(row.minutes),
         row.unitPrice,
@@ -770,7 +760,7 @@ function createBillingCompanyInvoiceRows(data, from, to) {
     })
 
   return {
-    headers: ['開始日', '終了日', '元請け', '単価区分', '作業者', '製番', '設備名', '作業内容', '件数', '実働分', '実働時間', '実働時間(小数)', '単価', '金額', '請負計上フラグ'],
+    headers: ['開始日', '終了日', '元請け', '単価区分', '作業者', '製番', '設備名', '作業内容', '件数', '実働時間', '実働時間(小数)', '単価', '金額', '請負計上フラグ'],
     rows
   }
 }
