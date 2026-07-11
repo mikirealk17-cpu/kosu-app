@@ -17,12 +17,31 @@ const today = new Date()
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
 document.getElementById('date_from').value = formatDate(firstDay)
 document.getElementById('date_to').value = formatDate(today)
+hideDisabledRateControls()
 
 function formatDate(date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function hideDisabledRateControls() {
+  if (RATE_EDIT_ENABLED) return
+
+  const billingSelect = document.getElementById('edit_billing_company')
+  const rateSelect = document.getElementById('edit_rate_type')
+
+  if (billingSelect) hideControl(billingSelect)
+  if (rateSelect) hideControl(rateSelect)
+}
+
+function hideControl(element) {
+  element.hidden = true
+  element.disabled = true
+  element.setAttribute('aria-hidden', 'true')
+  element.classList.add('is-hidden')
+  element.style.display = 'none'
 }
 
 function formatTime(time) {
@@ -112,6 +131,7 @@ async function checkRateFeature() {
 
   if (!RATE_EDIT_ENABLED) {
     rateFeatureEnabled = false
+    hideDisabledRateControls()
     return
   }
 

@@ -47,6 +47,11 @@ textarea {
   font: inherit;
 }
 
+[hidden],
+.is-hidden {
+  display: none !important;
+}
+
 /* ===== Layout ===== */
 .container {
   width: 100%;

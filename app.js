@@ -16,12 +16,31 @@ const LAST_BILLING_COMPANY_KEY_PREFIX = 'kosu_last_billing_company_'
 
 // 今日の日付をセットします。toISOString()はUTC基準なので、日本時間では日付がずれることがあります。
 document.getElementById('work_date').value = formatDate(new Date())
+hideDisabledBillingControls()
 
 function formatDate(date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function hideDisabledBillingControls() {
+  if (BILLING_INPUT_ENABLED && RATE_INPUT_ENABLED) return
+
+  const billingSelect = document.getElementById('billing_company')
+  const rateSelect = document.getElementById('rate_type')
+
+  if (!BILLING_INPUT_ENABLED && billingSelect) hideControl(billingSelect)
+  if (!RATE_INPUT_ENABLED && rateSelect) hideControl(rateSelect)
+}
+
+function hideControl(element) {
+  element.hidden = true
+  element.disabled = true
+  element.setAttribute('aria-hidden', 'true')
+  element.classList.add('is-hidden')
+  element.style.display = 'none'
 }
 
 // 作業内容を読み込む
@@ -432,7 +451,7 @@ async function loadBillingCompanies() {
 
   if (!BILLING_INPUT_ENABLED) {
     billingCompanyFeatureEnabled = false
-    select.disabled = true
+    hideControl(select)
     return
   }
 
@@ -507,7 +526,7 @@ async function checkRateFeature() {
 
   if (!RATE_INPUT_ENABLED) {
     rateFeatureEnabled = false
-    rateSelect.disabled = true
+    hideControl(rateSelect)
     return
   }
 
