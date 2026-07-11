@@ -12,6 +12,8 @@ let workerFeatureEnabled = false
 let billingCompanyFeatureEnabled = false
 let rateFeatureEnabled = false
 let messageTimer = null
+let keyboardOffsetFrame = null
+let lastKeyboardOffset = 0
 const LAST_BILLING_COMPANY_KEY_PREFIX = 'kosu_last_billing_company_'
 
 // 今日の日付をセットします。toISOString()はUTC基準なので、日本時間では日付がずれることがあります。
@@ -371,16 +373,21 @@ function showMessage(text, type) {
 function updateKeyboardOffset() {
   if (!window.visualViewport) return
 
-  if (window.visualViewport.offsetTop < 0) {
-    document.documentElement.style.setProperty('--keyboard-offset', '0px')
-    return
+  if (keyboardOffsetFrame) {
+    cancelAnimationFrame(keyboardOffsetFrame)
   }
 
-  const offset = Math.max(
-    0,
-    window.innerHeight - window.visualViewport.height - Math.max(0, window.visualViewport.offsetTop)
-  )
-  document.documentElement.style.setProperty('--keyboard-offset', `${Math.round(offset)}px`)
+  keyboardOffsetFrame = requestAnimationFrame(() => {
+    const activeElement = document.activeElement
+    const isFormFocused = activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)
+    const viewportLoss = Math.max(0, window.innerHeight - window.visualViewport.height)
+    const nextOffset = isFormFocused && viewportLoss > 120 ? Math.round(viewportLoss) : 0
+
+    if (Math.abs(nextOffset - lastKeyboardOffset) < 8) return
+
+    lastKeyboardOffset = nextOffset
+    document.documentElement.style.setProperty('--keyboard-offset', `${nextOffset}px`)
+  })
 }
 
 function setupKeyboardAwareSaveButton() {
@@ -388,7 +395,10 @@ function setupKeyboardAwareSaveButton() {
 
   updateKeyboardOffset()
   window.visualViewport.addEventListener('resize', updateKeyboardOffset)
-  window.visualViewport.addEventListener('scroll', updateKeyboardOffset)
+  window.addEventListener('focusin', updateKeyboardOffset)
+  window.addEventListener('focusout', () => {
+    setTimeout(updateKeyboardOffset, 120)
+  })
   window.addEventListener('orientationchange', () => {
     setTimeout(updateKeyboardOffset, 250)
   })
