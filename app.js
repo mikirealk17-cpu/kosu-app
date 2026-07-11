@@ -12,8 +12,6 @@ let workerFeatureEnabled = false
 let billingCompanyFeatureEnabled = false
 let rateFeatureEnabled = false
 let messageTimer = null
-let keyboardOffsetFrame = null
-let lastKeyboardOffset = 0
 const LAST_BILLING_COMPANY_KEY_PREFIX = 'kosu_last_billing_company_'
 
 // 今日の日付をセットします。toISOString()はUTC基準なので、日本時間では日付がずれることがあります。
@@ -370,40 +368,6 @@ function showMessage(text, type) {
   }, type === 'success' ? 2400 : 3000)
 }
 
-function updateKeyboardOffset() {
-  if (!window.visualViewport) return
-
-  if (keyboardOffsetFrame) {
-    cancelAnimationFrame(keyboardOffsetFrame)
-  }
-
-  keyboardOffsetFrame = requestAnimationFrame(() => {
-    const activeElement = document.activeElement
-    const isFormFocused = activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)
-    const viewportLoss = Math.max(0, window.innerHeight - window.visualViewport.height)
-    const nextOffset = isFormFocused && viewportLoss > 120 ? Math.round(viewportLoss) : 0
-
-    if (Math.abs(nextOffset - lastKeyboardOffset) < 8) return
-
-    lastKeyboardOffset = nextOffset
-    document.documentElement.style.setProperty('--keyboard-offset', `${nextOffset}px`)
-  })
-}
-
-function setupKeyboardAwareSaveButton() {
-  if (!window.visualViewport) return
-
-  updateKeyboardOffset()
-  window.visualViewport.addEventListener('resize', updateKeyboardOffset)
-  window.addEventListener('focusin', updateKeyboardOffset)
-  window.addEventListener('focusout', () => {
-    setTimeout(updateKeyboardOffset, 120)
-  })
-  window.addEventListener('orientationchange', () => {
-    setTimeout(updateKeyboardOffset, 250)
-  })
-}
-
 // イベントリスナー
 document.getElementById('start_time').addEventListener('input', () => handleNumericInput('start_time', 4))
 document.getElementById('end_time').addEventListener('input', () => handleNumericInput('end_time', 4))
@@ -418,7 +382,6 @@ document.getElementById('worker').addEventListener('change', () => {
 
 window.searchSeiban = searchSeiban
 window.saveLog = saveLog
-setupKeyboardAwareSaveButton()
 
 async function loadWorkers() {
   const { data, error } = await supabase
