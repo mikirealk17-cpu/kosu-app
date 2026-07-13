@@ -338,7 +338,7 @@ async function exportDetailCsv() {
     return false
   }
 
-  downloadCsv(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.csv`)
+  downloadCsv(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.csv`, exportRows.meta)
   return true
 }
 
@@ -353,7 +353,7 @@ async function exportDetailExcel() {
     return false
   }
 
-  downloadExcel(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.xls`)
+  downloadExcel(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.xls`, exportRows.meta)
   return true
 }
 
@@ -395,7 +395,8 @@ async function createDetailExportRows() {
   return {
     headers,
     rows,
-    filenameBase: `kosu_detail_${from}_${to}`
+    filenameBase: createExportFilenameBase('kosu_detail', from, to),
+    meta: createExportMeta('明細', from, to)
   }
 }
 
@@ -410,7 +411,7 @@ async function exportSummaryCsv() {
     return false
   }
 
-  downloadCsv(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.csv`)
+  downloadCsv(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.csv`, exportRows.meta)
   return true
 }
 
@@ -425,7 +426,7 @@ async function exportSummaryExcel() {
     return false
   }
 
-  downloadExcel(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.xls`)
+  downloadExcel(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.xls`, exportRows.meta)
   return true
 }
 
@@ -449,7 +450,8 @@ async function createSummaryExportRows() {
   return {
     headers,
     rows,
-    filenameBase: `kosu_summary_${currentTab}_${from}_${to}`
+    filenameBase: createExportFilenameBase(`kosu_summary_${currentTab}`, from, to),
+    meta: createExportMeta(getCurrentSummaryTitle(), from, to)
   }
 }
 
@@ -487,8 +489,9 @@ async function exportBillingCompanyCsv() {
   return true
 }
 
-function downloadCsv(headers, rows, filename) {
+function downloadCsv(headers, rows, filename, meta = null) {
   const csv = [
+    ...createCsvMetaRows(meta),
     headers.map(escapeCsv).join(','),
     ...rows.map(row => row.map(escapeCsv).join(','))
   ].join('\n')
@@ -503,8 +506,9 @@ function downloadCsv(headers, rows, filename) {
   URL.revokeObjectURL(url)
 }
 
-function downloadExcel(headers, rows, filename) {
+function downloadExcel(headers, rows, filename, meta = null) {
   const colWidths = getExcelColumnWidths(headers)
+  const columnCount = headers.length
   const colgroup = colWidths.map(width => `<col style="width: ${width}px;">`).join('')
   const headerHtml = headers
     .map(header => `<th>${escapeHtml(header)}</th>`)
@@ -512,6 +516,7 @@ function downloadExcel(headers, rows, filename) {
   const rowsHtml = rows
     .map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell ?? '')}</td>`).join('')}</tr>`)
     .join('')
+  const metaHtml = createExcelMetaRows(meta, columnCount)
   const html = `
 <!DOCTYPE html>
 <html lang="ja">
@@ -521,13 +526,16 @@ function downloadExcel(headers, rows, filename) {
     table { border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; }
     th { background: #f2f4f7; font-weight: 700; }
     th, td { border: 1px solid #c9d1dc; padding: 6px 8px; mso-number-format:"\\@"; vertical-align: top; white-space: nowrap; }
+    .export-title td { background: #d9eaf7; font-size: 16px; font-weight: 700; }
+    .export-meta td { background: #f8fafc; font-weight: 600; }
+    .export-spacer td { border: 0; height: 8px; padding: 0; }
     td:last-child { white-space: normal; }
   </style>
 </head>
 <body>
   <table>
     <colgroup>${colgroup}</colgroup>
-    <thead><tr>${headerHtml}</tr></thead>
+    <thead>${metaHtml}<tr>${headerHtml}</tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>
 </body>
@@ -535,6 +543,92 @@ function downloadExcel(headers, rows, filename) {
 
   const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' })
   downloadBlob(blob, filename)
+}
+
+function createCsvMetaRows(meta) {
+  if (!meta) return []
+
+  return [
+    [meta.title].map(escapeCsv).join(','),
+    ['期間', `${meta.from}〜${meta.to}`].map(escapeCsv).join(','),
+    ['絞り込み', meta.filterLabel].map(escapeCsv).join(','),
+    ''
+  ]
+}
+
+function createExcelMetaRows(meta, columnCount) {
+  if (!meta) return ''
+
+  return `
+      <tr class="export-title"><td colspan="${columnCount}">${escapeHtml(meta.title)}</td></tr>
+      <tr class="export-meta"><td>期間</td><td colspan="${Math.max(columnCount - 1, 1)}">${escapeHtml(`${meta.from}〜${meta.to}`)}</td></tr>
+      <tr class="export-meta"><td>絞り込み</td><td colspan="${Math.max(columnCount - 1, 1)}">${escapeHtml(meta.filterLabel)}</td></tr>
+      <tr class="export-spacer"><td colspan="${columnCount}"></td></tr>
+    `
+}
+
+function createExportMeta(title, from, to) {
+  return {
+    title: `工数集計 ${title}`,
+    from,
+    to,
+    filterLabel: createExportFilterLabel()
+  }
+}
+
+function getCurrentSummaryTitle() {
+  const label = summaryCsvLabels[currentTab] || '表示中集計CSV'
+  return label.replace('CSV', '')
+}
+
+function createExportFilterLabel() {
+  const filters = [
+    getSelectedFilterLabel('filter_worker', '作業者'),
+    getSelectedFilterLabel('filter_work_type', '作業内容'),
+    getSelectedFilterLabel('filter_seiban', '製番')
+  ].filter(Boolean)
+
+  return filters.length ? filters.join(' / ') : '全件'
+}
+
+function getSelectedFilterLabel(selectId, label) {
+  const select = document.getElementById(selectId)
+  if (!select || !select.value) return ''
+
+  const selectedText = select.options[select.selectedIndex]?.textContent?.trim()
+  return selectedText ? `${label}: ${selectedText}` : ''
+}
+
+function createExportFilenameBase(prefix, from, to) {
+  const filterSuffix = createExportFilenameFilterSuffix()
+  return `${prefix}_${from}_${to}${filterSuffix}`
+}
+
+function createExportFilenameFilterSuffix() {
+  const parts = [
+    getSelectedFilenamePart('filter_worker', 'worker'),
+    getSelectedFilenamePart('filter_work_type', 'work'),
+    getSelectedFilenamePart('filter_seiban', 'seiban')
+  ].filter(Boolean)
+
+  return parts.length ? `_${parts.join('_')}` : ''
+}
+
+function getSelectedFilenamePart(selectId, prefix) {
+  const select = document.getElementById(selectId)
+  if (!select || !select.value) return ''
+
+  const selectedText = select.options[select.selectedIndex]?.textContent?.trim()
+  const safeText = sanitizeFilenamePart(selectedText || select.value)
+  return safeText ? `${prefix}-${safeText}` : ''
+}
+
+function sanitizeFilenamePart(value) {
+  return String(value)
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '')
+    .replace(/\s+/g, '-')
+    .slice(0, 40)
 }
 
 function getExcelColumnWidths(headers) {
