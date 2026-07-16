@@ -351,6 +351,10 @@ button:active {
   transform: translateY(4px);
 }
 
+#message.has-detail {
+  text-align: left;
+}
+
 .success {
   border: 1px solid #b6e2c7;
   color: var(--success-text);

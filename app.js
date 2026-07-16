@@ -309,9 +309,47 @@ async function saveLog() {
     showMessage('❌ 保存に失敗しました', 'error')
   } else {
     if (BILLING_INPUT_ENABLED) rememberBillingCompany(workerId, billingCompanyId)
-    showMessage('✓ 保存しました', 'success')
+    showMessage(createSavedLogMessage({
+      workDate,
+      seiban,
+      equipmentName,
+      startTime,
+      endTime,
+      actualMinutes
+    }), 'success')
     resetFormForNextInput()
   }
+}
+
+function createSavedLogMessage({ workDate, seiban, equipmentName, startTime, endTime, actualMinutes }) {
+  const worker = workerFeatureEnabled ? getSelectedOptionText('worker') : '作業者未設定'
+
+  return [
+    `${formatDateForMessage(workDate)}　${worker || '作業者未設定'}`,
+    `製番${seiban}　${equipmentName}`,
+    `${startTime}〜${endTime}　実働${formatDurationForMessage(actualMinutes)}`,
+    '保存しました'
+  ].join('\n')
+}
+
+function formatDateForMessage(value) {
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return value
+  return `${month}月${day}日`
+}
+
+function formatDurationForMessage(minutes) {
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  const decimalHours = Math.round((minutes / 60) * 100) / 100
+
+  if (remainder === 0) return `${hours}時間`
+  return `${hours}時間${remainder}分（${decimalHours}時間）`
+}
+
+function getSelectedOptionText(selectId) {
+  const select = document.getElementById(selectId)
+  return select?.options[select.selectedIndex]?.textContent?.trim() || ''
 }
 
 async function hasDuplicateTimeLog(workerId, workDate, startTime, endTime) {
@@ -357,7 +395,7 @@ function showMessage(text, type) {
   if (messageTimer) clearTimeout(messageTimer)
 
   el.textContent = text
-  el.className = `${type} is-visible`
+  el.className = `${type} is-visible${text.includes('\n') ? ' has-detail' : ''}`
 
   messageTimer = setTimeout(() => {
     el.classList.add('is-hiding')
@@ -365,7 +403,7 @@ function showMessage(text, type) {
       el.textContent = ''
       el.className = ''
     }, 220)
-  }, type === 'success' ? 2400 : 3000)
+  }, type === 'success' ? 6500 : 3000)
 }
 
 // イベントリスナー
