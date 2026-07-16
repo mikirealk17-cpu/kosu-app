@@ -465,6 +465,33 @@ button:active {
   align-items: center;
 }
 
+.export-preview {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: #344054;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.export-preview span,
+.export-preview small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.export-preview span {
+  font-weight: 800;
+}
+
+.export-preview small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .csv-actions .secondary-btn {
   background: var(--primary);
   box-shadow: 0 10px 20px rgba(15, 107, 255, 0.16);

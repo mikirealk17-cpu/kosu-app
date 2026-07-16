@@ -30,6 +30,7 @@ window.switchTab = function(tab) {
 }
 
 window.loadData = async function() {
+  updateExportPreview()
   setSummaryStatus('集計を更新中です...')
 
   if (currentTab === 'worker') {
@@ -100,6 +101,29 @@ function updateSummaryCsvOption() {
     const label = (summaryCsvLabels[currentTab] || '表示中の集計CSV').replace('CSV', 'Excel')
     excelOption.textContent = label
   }
+  updateExportPreview()
+}
+
+function updateExportPreview() {
+  const preview = document.getElementById('export_preview')
+  if (!preview) return
+
+  const from = document.getElementById('date_from').value || '開始日未選択'
+  const to = document.getElementById('date_to').value || '終了日未選択'
+  const meta = createExportMeta(getSelectedExportTitle(), from, to)
+  const csvType = document.getElementById('csv_type').value
+  const format = csvType.includes('excel') ? 'Excel' : 'CSV'
+
+  preview.innerHTML = `
+    <span>出力予定: ${escapeHtml(meta.title)}（${format}）</span>
+    <small>期間: ${escapeHtml(`${meta.from}〜${meta.to}`)} / 絞り込み: ${escapeHtml(meta.filterLabel)}</small>
+  `
+}
+
+function getSelectedExportTitle() {
+  const csvType = document.getElementById('csv_type')?.value
+  if (csvType === 'detail' || csvType === 'detail_excel') return '明細'
+  return getCurrentSummaryTitle()
 }
 
 function formatDate(date) {
@@ -1134,4 +1158,11 @@ function renderWorker(data) {
 
 updateSummaryCsvOption()
 await loadFilterOptions()
+document.getElementById('date_from').addEventListener('change', updateExportPreview)
+document.getElementById('date_to').addEventListener('change', updateExportPreview)
+document.getElementById('filter_worker').addEventListener('change', updateExportPreview)
+document.getElementById('filter_work_type').addEventListener('change', updateExportPreview)
+document.getElementById('filter_seiban').addEventListener('change', updateExportPreview)
+document.getElementById('csv_type').addEventListener('change', updateExportPreview)
+updateExportPreview()
 window.loadData()
