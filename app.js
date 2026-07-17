@@ -403,7 +403,7 @@ function showMessage(text, type) {
       el.textContent = ''
       el.className = ''
     }, 220)
-  }, type === 'success' ? 6500 : 3000)
+  }, type === 'success' ? 8500 : 3000)
 }
 
 // イベントリスナー
