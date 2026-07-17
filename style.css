@@ -353,7 +353,7 @@ button:active {
 
 #message.has-detail {
   position: fixed;
-  top: max(16px, env(safe-area-inset-top));
+  bottom: max(16px, env(safe-area-inset-bottom));
   left: 50%;
   z-index: 20;
   width: min(440px, calc(100vw - 28px));
@@ -364,7 +364,7 @@ button:active {
   font-size: 16px;
   line-height: 1.75;
   text-align: left;
-  transform: translate(-50%, -8px) scale(0.98);
+  transform: translate(-50%, 8px) scale(0.98);
 }
 
 #message.has-detail.is-visible {
@@ -372,7 +372,7 @@ button:active {
 }
 
 #message.has-detail.is-hiding {
-  transform: translate(-50%, -8px) scale(0.98);
+  transform: translate(-50%, 8px) scale(0.98);
 }
 
 .success {
