@@ -143,6 +143,10 @@ function minutesToDecimalHours(minutes) {
   return Math.round((minutes / 60) * 100) / 100
 }
 
+function minutesToExportHours(minutes) {
+  return minutesToDecimalHours(minutes || 0)
+}
+
 function formatTime(time) {
   return time ? time.slice(0, 5) : ''
 }
@@ -157,6 +161,7 @@ function escapeHtml(value) {
 }
 
 function escapeCsv(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
   const text = value == null ? '' : String(value)
   return `"${text.replaceAll('"', '""')}"`
 }
@@ -322,10 +327,6 @@ async function fetchSummaryRows() {
     .select(`
       work_date,
       worker_id,
-      start_time,
-      end_time,
-      break1_minutes,
-      break2_minutes,
       actual_minutes,
       note,
       seiban_master (
@@ -394,10 +395,6 @@ async function createDetailExportRows() {
     '製番',
     '設備名',
     '作業内容',
-    '開始時間',
-    '終了時間',
-    '休憩1分',
-    '休憩2分',
     '実働時間',
     '備考'
   ]
@@ -408,11 +405,7 @@ async function createDetailExportRows() {
     row.seiban_master?.seiban || '',
     row.seiban_master?.equipment_name || '',
     row.work_type_master?.name || '',
-    formatTime(row.start_time),
-    formatTime(row.end_time),
-    row.break1_minutes || 0,
-    row.break2_minutes || 0,
-    minutesToHM(row.actual_minutes || 0),
+    minutesToExportHours(row.actual_minutes),
     row.note || ''
   ])
 
@@ -538,7 +531,7 @@ function downloadExcel(headers, rows, filename, meta = null) {
     .map(header => `<th>${escapeHtml(header)}</th>`)
     .join('')
   const rowsHtml = rows
-    .map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell ?? '')}</td>`).join('')}</tr>`)
+    .map(row => `<tr>${row.map(cell => createExcelCell(cell)).join('')}</tr>`)
     .join('')
   const metaHtml = createExcelMetaRows(meta, columnCount)
   const html = `
@@ -549,7 +542,9 @@ function downloadExcel(headers, rows, filename, meta = null) {
   <style>
     table { border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; }
     th { background: #f2f4f7; font-weight: 700; }
-    th, td { border: 1px solid #c9d1dc; padding: 6px 8px; mso-number-format:"\\@"; vertical-align: top; white-space: nowrap; }
+    th, td { border: 1px solid #c9d1dc; padding: 6px 8px; vertical-align: top; white-space: nowrap; }
+    .text-cell { mso-number-format:"\\@"; }
+    .number-cell { mso-number-format:"0.00"; text-align: right; }
     .export-title td { background: #d9eaf7; font-size: 16px; font-weight: 700; }
     .export-meta td { background: #f8fafc; font-weight: 600; }
     .export-spacer td { border: 0; height: 8px; padding: 0; }
@@ -567,6 +562,13 @@ function downloadExcel(headers, rows, filename, meta = null) {
 
   const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' })
   downloadBlob(blob, filename)
+}
+
+function createExcelCell(cell) {
+  if (typeof cell === 'number' && Number.isFinite(cell)) {
+    return `<td class="number-cell">${cell}</td>`
+  }
+  return `<td class="text-cell">${escapeHtml(cell ?? '')}</td>`
 }
 
 function createCsvMetaRows(meta) {
@@ -662,10 +664,6 @@ function getExcelColumnWidths(headers) {
     '製番': 130,
     '設備名': 220,
     '作業内容': 180,
-    '開始時間': 90,
-    '終了時間': 90,
-    '休憩1分': 80,
-    '休憩2分': 80,
     '実働時間': 100,
     '備考': 280,
     '月': 100,
@@ -710,22 +708,20 @@ function createSeibanSummaryRows(data) {
     rows: Object.entries(map).map(([seiban, val]) => [
       seiban,
       val.equipment,
-      minutesToHM(val.minutes)
+      minutesToExportHours(val.minutes)
     ])
   }
 }
 
 function createSeibanDetailRows(data) {
   return {
-    headers: ['日付', '製番', '設備名', '作業者', '開始時間', '終了時間', '実働時間'],
+    headers: ['日付', '製番', '設備名', '作業者', '実働時間'],
     rows: data.map(row => [
       row.work_date,
       row.seiban_master?.seiban || '',
       row.seiban_master?.equipment_name || '',
       workerNameMap[row.worker_id] || '',
-      formatTime(row.start_time),
-      formatTime(row.end_time),
-      minutesToHM(row.actual_minutes || 0)
+      minutesToExportHours(row.actual_minutes)
     ])
   }
 }
@@ -741,7 +737,7 @@ function createDailySummaryRows(data) {
     headers: ['日付', '実働時間'],
     rows: Object.entries(map).map(([date, minutes]) => [
       date,
-      minutesToHM(minutes)
+      minutesToExportHours(minutes)
     ])
   }
 }
@@ -760,7 +756,7 @@ function createMonthlySummaryRows(data) {
     rows: Object.entries(map).map(([month, val]) => [
       month,
       val.count,
-      minutesToHM(val.minutes)
+      minutesToExportHours(val.minutes)
     ])
   }
 }
@@ -777,7 +773,7 @@ function createWorkerSummaryRows(data) {
     headers: ['作業者', '実働時間'],
     rows: Object.entries(map).map(([worker, minutes]) => [
       worker,
-      minutesToHM(minutes)
+      minutesToExportHours(minutes)
     ])
   }
 }
@@ -796,7 +792,7 @@ function createBillingCompanySummaryRows(data) {
     rows: Object.entries(map).map(([company, val]) => [
       company,
       val.count,
-      minutesToHM(val.minutes)
+      minutesToExportHours(val.minutes)
     ])
   }
 }
