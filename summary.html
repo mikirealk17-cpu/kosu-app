@@ -33,8 +33,6 @@
       <div class="tab-buttons" role="tablist" aria-label="集計の種類">
         <button class="tab-btn active" onclick="switchTab('seiban')">製番別</button>
         <button class="tab-btn" onclick="switchTab('seiban_detail')">製番明細</button>
-        <button class="tab-btn" onclick="switchTab('daily')">日別</button>
-        <button class="tab-btn" onclick="switchTab('monthly')">月別</button>
         <button class="tab-btn" onclick="switchTab('worker')">作業者別</button>
       </div>
 
@@ -64,7 +62,7 @@
       <div class="panel-header table-header">
         <div>
           <h2>集計結果</h2>
-          <p>選択中のタブに合わせて内容が変わります。</p>
+          <p>選択中の集計に合わせて内容が変わります。</p>
         </div>
         <div class="csv-actions">
           <select id="csv_type" aria-label="CSVの種類">

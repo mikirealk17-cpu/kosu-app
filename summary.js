@@ -10,8 +10,6 @@ let billingCompanyNameMap = {}
 const summaryCsvLabels = {
   seiban: '製番別CSV',
   seiban_detail: '製番明細CSV',
-  daily: '日別CSV',
-  monthly: '月別CSV',
   worker: '作業者別CSV',
   billing_company: '元請け別CSV'
 }
@@ -22,9 +20,12 @@ document.getElementById('date_from').value = formatDate(firstDay)
 document.getElementById('date_to').value = formatDate(today)
 
 window.switchTab = function(tab) {
+  const visibleTabs = ['seiban', 'seiban_detail', 'worker']
+  if (!visibleTabs.includes(tab)) tab = 'seiban'
+
   currentTab = tab
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'))
-  document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active')
+  document.querySelector(`[onclick="switchTab('${tab}')"]`)?.classList.add('active')
   updateSummaryCsvOption()
   window.loadData()
 }
