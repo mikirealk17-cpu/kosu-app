@@ -7,11 +7,11 @@ let currentTab = 'seiban'
 let workerNameMap = {}
 let billingCompanyNameMap = {}
 
-const summaryCsvLabels = {
-  seiban: '製番別CSV',
-  seiban_detail: '製番明細CSV',
-  worker: '作業者別CSV',
-  billing_company: '元請け別CSV'
+const summaryExcelLabels = {
+  seiban: '製番別Excel',
+  seiban_detail: '製番明細Excel',
+  worker: '作業者別Excel',
+  billing_company: '元請け別Excel'
 }
 
 const today = new Date()
@@ -26,7 +26,7 @@ window.switchTab = function(tab) {
   currentTab = tab
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'))
   document.querySelector(`[onclick="switchTab('${tab}')"]`)?.classList.add('active')
-  updateSummaryCsvOption()
+  updateSummaryExcelOption()
   window.loadData()
 }
 
@@ -93,14 +93,11 @@ window.loadData = async function() {
   setSummaryStatus(`${data.length}件のデータを表示しました`)
 }
 
-function updateSummaryCsvOption() {
-  const csvOption = document.getElementById('summary_csv_option')
+function updateSummaryExcelOption() {
   const excelOption = document.getElementById('summary_excel_option')
 
-  if (csvOption) csvOption.textContent = summaryCsvLabels[currentTab] || '表示中の集計CSV'
   if (excelOption) {
-    const label = (summaryCsvLabels[currentTab] || '表示中の集計CSV').replace('CSV', 'Excel')
-    excelOption.textContent = label
+    excelOption.textContent = summaryExcelLabels[currentTab] || '表示中の集計Excel'
   }
   updateExportPreview()
 }
@@ -112,18 +109,16 @@ function updateExportPreview() {
   const from = document.getElementById('date_from').value || '開始日未選択'
   const to = document.getElementById('date_to').value || '終了日未選択'
   const meta = createExportMeta(getSelectedExportTitle(), from, to)
-  const csvType = document.getElementById('csv_type').value
-  const format = csvType.includes('excel') ? 'Excel' : 'CSV'
 
   preview.innerHTML = `
-    <span>出力予定: ${escapeHtml(meta.title)}（${format}）</span>
+    <span>出力予定: ${escapeHtml(meta.title)}（Excel）</span>
     <small>期間: ${escapeHtml(`${meta.from}〜${meta.to}`)} / 絞り込み: ${escapeHtml(meta.filterLabel)}</small>
   `
 }
 
 function getSelectedExportTitle() {
-  const csvType = document.getElementById('csv_type')?.value
-  if (csvType === 'detail' || csvType === 'detail_excel') return '明細'
+  const exportType = document.getElementById('export_type')?.value
+  if (exportType === 'detail' || exportType === 'detail_excel') return '明細'
   return getCurrentSummaryTitle()
 }
 
@@ -278,25 +273,25 @@ async function loadSeibanOptions() {
   })
 }
 
-window.exportCsv = async function() {
+window.exportExcel = async function() {
   const button = document.querySelector('.csv-actions button')
-  const originalText = button?.textContent || 'ファイル出力'
+  const originalText = button?.textContent || 'Excel出力'
   if (button) {
     button.disabled = true
     button.textContent = '出力中...'
   }
 
-  const csvType = document.getElementById('csv_type').value
+  let exportType = document.getElementById('export_type').value
+  if (exportType === 'detail') exportType = 'detail_excel'
+  if (exportType === 'summary') exportType = 'summary_excel'
 
   try {
     let success
-    if (csvType === 'summary') {
-      success = await exportSummaryCsv()
-    } else if (csvType === 'summary_excel') {
+    if (exportType === 'summary_excel') {
       success = await exportSummaryExcel()
-    } else if (csvType === 'detail_excel') {
+    } else if (exportType === 'detail_excel') {
       success = await exportDetailExcel()
-    } else if (csvType === 'billing_company') {
+    } else if (exportType === 'billing_company') {
       if (!BILLING_COMPANY_CSV_ENABLED) {
         alert('請求確認CSVは工数管理版では通常出力から外しています')
         success = false
@@ -304,7 +299,7 @@ window.exportCsv = async function() {
         success = await exportBillingCompanyCsv()
       }
     } else {
-      success = await exportDetailCsv()
+      success = await exportDetailExcel()
     }
 
     if (button) button.textContent = success === false ? originalText : '出力しました'
@@ -351,21 +346,6 @@ async function fetchSummaryRows() {
   }
 
   return data
-}
-
-async function exportDetailCsv() {
-  let exportRows
-
-  try {
-    exportRows = await createDetailExportRows()
-  } catch (error) {
-    console.error('明細CSV出力データの取得に失敗しました', error)
-    alert('明細CSV出力データの取得に失敗しました')
-    return false
-  }
-
-  downloadCsv(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.csv`, exportRows.meta)
-  return true
 }
 
 async function exportDetailExcel() {
@@ -416,21 +396,6 @@ async function createDetailExportRows() {
     filenameBase: createExportFilenameBase('kosu_detail', from, to),
     meta: createExportMeta('明細', from, to)
   }
-}
-
-async function exportSummaryCsv() {
-  let exportRows
-
-  try {
-    exportRows = await createSummaryExportRows()
-  } catch (error) {
-    console.error('集計CSV出力データの取得に失敗しました', error)
-    alert('集計CSV出力データの取得に失敗しました')
-    return false
-  }
-
-  downloadCsv(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.csv`, exportRows.meta)
-  return true
 }
 
 async function exportSummaryExcel() {
@@ -604,8 +569,8 @@ function createExportMeta(title, from, to) {
 }
 
 function getCurrentSummaryTitle() {
-  const label = summaryCsvLabels[currentTab] || '表示中集計CSV'
-  return label.replace('CSV', '')
+  const label = summaryExcelLabels[currentTab] || '表示中集計Excel'
+  return label.replace('Excel', '')
 }
 
 function createExportFilterLabel() {
@@ -1153,13 +1118,13 @@ function renderWorker(data) {
   document.getElementById('summary_table').innerHTML = html
 }
 
-updateSummaryCsvOption()
+updateSummaryExcelOption()
 await loadFilterOptions()
 document.getElementById('date_from').addEventListener('change', updateExportPreview)
 document.getElementById('date_to').addEventListener('change', updateExportPreview)
 document.getElementById('filter_worker').addEventListener('change', updateExportPreview)
 document.getElementById('filter_work_type').addEventListener('change', updateExportPreview)
 document.getElementById('filter_seiban').addEventListener('change', updateExportPreview)
-document.getElementById('csv_type').addEventListener('change', updateExportPreview)
+document.getElementById('export_type').addEventListener('change', updateExportPreview)
 updateExportPreview()
 window.loadData()

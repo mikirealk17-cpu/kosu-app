@@ -65,13 +65,11 @@
           <p>選択中の集計に合わせて内容が変わります。</p>
         </div>
         <div class="csv-actions">
-          <select id="csv_type" aria-label="CSVの種類">
-            <option value="detail">明細CSV</option>
-            <option value="summary" id="summary_csv_option">製番別CSV</option>
+          <select id="export_type" aria-label="Excelの種類">
             <option value="detail_excel">明細Excel</option>
             <option value="summary_excel" id="summary_excel_option">製番別Excel</option>
           </select>
-          <button class="secondary-btn compact-action" onclick="exportCsv()">ファイル出力</button>
+          <button class="secondary-btn compact-action" onclick="exportExcel()">Excel出力</button>
           <div id="export_preview" class="export-preview" aria-live="polite"></div>
         </div>
       </div>
