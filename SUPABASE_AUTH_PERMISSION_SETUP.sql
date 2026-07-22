@@ -4,8 +4,8 @@
 -- 安全方針:
 -- - 既存の工数データは更新・削除しません。
 -- - 既存テーブルへ追加する company_id は空欄を許可し、既存データを壊しません。
--- - RLSの有効化はこのSQLでは行いません。
--- - ログイン画面とプロフィール取得を実装してから、RLSは別手順で段階的に追加します。
+-- - このSQLでは user_profiles の本人読み取りだけRLSを有効にします。
+-- - 工数やマスタのRLSはログイン確認後、別SQLで段階的に追加します。
 --
 -- 前提:
 -- - Supabase Authを使う方針で進めること。
@@ -32,7 +32,7 @@ create table if not exists public.user_profiles (
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz,
-  check (
+  constraint user_profiles_role_requirements check (
     (
       role = 'system_admin'
       and worker_id is null
@@ -45,11 +45,54 @@ create table if not exists public.user_profiles (
     or
     (
       role = 'worker'
-      and company_id is not null
       and worker_id is not null
     )
   )
 );
+
+do $$
+declare
+  old_constraint_name text;
+begin
+  select conname
+  into old_constraint_name
+  from pg_constraint
+  where conrelid = 'public.user_profiles'::regclass
+    and contype = 'c'
+    and conname <> 'user_profiles_role_requirements'
+    and pg_get_constraintdef(oid) ilike '%role%worker%'
+    and pg_get_constraintdef(oid) ilike '%company_id%not null%'
+  limit 1;
+
+  if old_constraint_name is not null then
+    execute format('alter table public.user_profiles drop constraint %I', old_constraint_name);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.user_profiles'::regclass
+      and conname = 'user_profiles_role_requirements'
+  ) then
+    alter table public.user_profiles
+      add constraint user_profiles_role_requirements check (
+        (
+          role = 'system_admin'
+          and worker_id is null
+        )
+        or
+        (
+          role = 'company_admin'
+          and company_id is not null
+        )
+        or
+        (
+          role = 'worker'
+          and worker_id is not null
+        )
+      );
+  end if;
+end $$;
 
 create unique index if not exists user_profiles_auth_user_id_idx
   on public.user_profiles(auth_user_id);
@@ -72,7 +115,23 @@ alter table public.work_logs
 create index if not exists work_logs_company_id_idx
   on public.work_logs(company_id);
 
--- ここでは grant や RLS policy は追加しません。
+-- ログイン直後に自分のプロフィールだけ読めるようにします。
+-- 工数やマスタの閲覧制限は SUPABASE_AUTH_RLS_POLICIES.sql で行います。
+alter table public.user_profiles enable row level security;
+grant usage on schema public to authenticated;
+grant select on public.user_profiles to authenticated;
+
+drop policy if exists "user_profiles_select_own_before_full_rls" on public.user_profiles;
+create policy "user_profiles_select_own_before_full_rls"
+on public.user_profiles
+for select
+to authenticated
+using (
+  auth_user_id = auth.uid()
+  and is_active = true
+);
+
+-- ここでは工数やマスタのRLS policyは追加しません。
 -- 理由:
 -- - ログイン実装前にRLSを強くすると、既存画面が急に表示できなくなる可能性があります。
 -- - company_id が未設定の既存データをどう扱うか決めてから、読み取り範囲を制限する必要があります。

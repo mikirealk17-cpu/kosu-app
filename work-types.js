@@ -1,4 +1,7 @@
 import { supabase } from './supabaseClient.js'
+import { requireAuth, ROLES } from './auth.js'
+
+await requireAuth([ROLES.ADMIN])
 
 window.loadWorkTypes = async function() {
   const list = document.getElementById('work_type_list')

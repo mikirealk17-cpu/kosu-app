@@ -1,4 +1,7 @@
 import { supabase } from './supabaseClient.js'
+import { requireAuth, ROLES } from './auth.js'
+
+await requireAuth([ROLES.ADMIN])
 
 window.loadSeibans = async function() {
   const list = document.getElementById('seiban_list')

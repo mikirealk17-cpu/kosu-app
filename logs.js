@@ -1,10 +1,12 @@
 import { supabase } from './supabaseClient.js'
+import { requireAuth, ROLES } from './auth.js'
 import {
   calculateBillingAmount,
   fillRateTypeSelect,
   isContractRate
 } from './rate-utils.js'
 
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
 const RATE_EDIT_ENABLED = false
 
 let logs = []
@@ -103,11 +105,17 @@ async function loadWorkers() {
   emptyOption.textContent = '作業者を選択'
   select.appendChild(emptyOption)
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('worker_master')
     .select('*')
     .eq('is_active', true)
     .order('sort_order')
+
+  if (authContext.isWorker) {
+    query = query.eq('id', authContext.profile.worker_id)
+  }
+
+  const { data, error } = await query
 
   if (error || !data) {
     workerFeatureEnabled = false
@@ -117,6 +125,7 @@ async function loadWorkers() {
 
   workerFeatureEnabled = true
   group.style.display = ''
+  select.disabled = authContext.isWorker
 
   data.forEach(worker => {
     const option = document.createElement('option')
@@ -124,6 +133,10 @@ async function loadWorkers() {
     option.textContent = worker.name
     select.appendChild(option)
   })
+
+  if (authContext.isWorker) {
+    select.value = authContext.profile.worker_id || ''
+  }
 }
 
 async function checkRateFeature() {
@@ -211,6 +224,10 @@ window.loadLogs = async function() {
 
   query = applyFilters(query, filters)
 
+  if (authContext.isWorker) {
+    query = query.eq('worker_id', authContext.profile.worker_id)
+  }
+
   const { data, error } = await query
 
   if (error || !data) {
@@ -267,7 +284,8 @@ function renderLogs() {
     deleteButton.textContent = '削除する'
     deleteButton.addEventListener('click', () => deleteLog(log.id))
 
-    actions.append(editButton, deleteButton)
+    actions.appendChild(editButton)
+    if (authContext.isAdmin) actions.appendChild(deleteButton)
     item.append(main, sub, actions)
     list.appendChild(item)
   })
@@ -316,6 +334,11 @@ window.cancelEdit = function() {
 }
 
 async function deleteLog(id) {
+  if (!authContext.isAdmin) {
+    showMessage('❌ 削除は管理者だけが実行できます', 'error')
+    return
+  }
+
   const target = logs.find(log => log.id === id)
   if (!target) return
 
@@ -381,7 +404,9 @@ function createUpdatedConfirmText(data) {
 
 function getFilters() {
   return {
-    workerId: document.getElementById('filter_worker').value,
+    workerId: authContext.isWorker
+      ? authContext.profile.worker_id
+      : document.getElementById('filter_worker').value,
     workTypeId: document.getElementById('filter_work_type').value,
     seibanId: document.getElementById('filter_seiban').value
   }
@@ -403,11 +428,17 @@ async function loadFilterOptions() {
 }
 
 async function loadWorkerFilterOptions() {
-  const { data } = await supabase
+  let query = supabase
     .from('worker_master')
     .select('id, name')
     .eq('is_active', true)
     .order('sort_order')
+
+  if (authContext.isWorker) {
+    query = query.eq('id', authContext.profile.worker_id)
+  }
+
+  const { data } = await query
 
   const select = document.getElementById('filter_worker')
   select.innerHTML = '<option value="">全作業者</option>'
@@ -419,6 +450,11 @@ async function loadWorkerFilterOptions() {
     option.textContent = worker.name
     select.appendChild(option)
   })
+
+  if (authContext.isWorker) {
+    select.value = authContext.profile.worker_id || ''
+    select.disabled = true
+  }
 }
 
 async function loadWorkTypeFilterOptions() {
@@ -524,7 +560,9 @@ window.updateLog = async function() {
   const break1 = parseInt(document.getElementById('edit_break1').value) || 0
   const break2 = parseInt(document.getElementById('edit_break2').value) || 0
   const note = document.getElementById('edit_note').value.trim()
-  const workerId = document.getElementById('edit_worker').value
+  const workerId = authContext.isWorker
+    ? authContext.profile.worker_id
+    : document.getElementById('edit_worker').value
   const billingCompanyId = document.getElementById('edit_billing_company').value
   const rateType = document.getElementById('edit_rate_type').value
 

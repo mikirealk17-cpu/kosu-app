@@ -1,10 +1,12 @@
 import { supabase } from './supabaseClient.js'
+import { requireAuth, ROLES } from './auth.js'
 import {
   calculateBillingAmount,
   fillRateTypeSelect,
   isContractRate
 } from './rate-utils.js'
 
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
 const BILLING_INPUT_ENABLED = false
 const RATE_INPUT_ENABLED = false
 
@@ -180,7 +182,7 @@ function timeToMinutes(time) {
 
 // 保存する
 async function saveLog() {
-  const workerId = document.getElementById('worker').value
+  const workerId = getCurrentWorkerId()
   const billingCompanyId = BILLING_INPUT_ENABLED ? document.getElementById('billing_company').value : ''
   const rateType = RATE_INPUT_ENABLED ? document.getElementById('rate_type').value : ''
   const seiban = document.getElementById('seiban').value.trim()
@@ -322,7 +324,9 @@ async function saveLog() {
 }
 
 function createSavedLogMessage({ workDate, seiban, equipmentName, startTime, endTime, actualMinutes }) {
-  const worker = workerFeatureEnabled ? getSelectedOptionText('worker') : '作業者未設定'
+  const worker = authContext.isWorker
+    ? getSelectedOptionText('worker')
+    : (workerFeatureEnabled ? getSelectedOptionText('worker') : '作業者未設定')
 
   return [
     `${formatDateForMessage(workDate)}　${worker || '作業者未設定'}`,
@@ -376,6 +380,12 @@ async function hasDuplicateTimeLog(workerId, workDate, startTime, endTime) {
   })
 }
 
+function getCurrentWorkerId() {
+  return authContext.isWorker
+    ? authContext.profile.worker_id
+    : document.getElementById('worker').value
+}
+
 function resetFormForNextInput() {
   document.getElementById('seiban').value = ''
   document.getElementById('equipment_name').value = ''
@@ -422,11 +432,17 @@ window.searchSeiban = searchSeiban
 window.saveLog = saveLog
 
 async function loadWorkers() {
-  const { data, error } = await supabase
+  let query = supabase
     .from('worker_master')
     .select('*')
     .eq('is_active', true)
     .order('sort_order')
+
+  if (authContext.isWorker) {
+    query = query.eq('id', authContext.profile.worker_id)
+  }
+
+  const { data, error } = await query
 
   const select = document.getElementById('worker')
   select.innerHTML = ''
@@ -446,7 +462,7 @@ async function loadWorkers() {
   }
 
   workerFeatureEnabled = true
-  select.disabled = false
+  select.disabled = authContext.isWorker
 
   data.forEach(worker => {
     const option = document.createElement('option')
@@ -454,6 +470,10 @@ async function loadWorkers() {
     option.textContent = worker.name
     select.appendChild(option)
   })
+
+  if (authContext.isWorker) {
+    select.value = authContext.profile.worker_id || ''
+  }
 }
 
 async function loadBillingCompanies() {

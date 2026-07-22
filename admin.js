@@ -1,4 +1,7 @@
 import { supabase } from './supabaseClient.js'
+import { requireAuth, ROLES } from './auth.js'
+
+await requireAuth([ROLES.ADMIN])
 
 const countTargets = [
   { id: 'count_workers', table: 'worker_master', label: '作業者' },

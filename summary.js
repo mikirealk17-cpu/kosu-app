@@ -1,6 +1,8 @@
 import { supabase } from './supabaseClient.js'
+import { requireAuth, ROLES } from './auth.js'
 import { getRateTypeLabel, isContractRate } from './rate-utils.js'
 
+await requireAuth([ROLES.ADMIN])
 const BILLING_COMPANY_CSV_ENABLED = false
 
 let currentTab = 'seiban'
