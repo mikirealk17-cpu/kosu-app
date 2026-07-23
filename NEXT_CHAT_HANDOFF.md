@@ -119,6 +119,11 @@
 - 2026-07-22、Supabase Auth前提の `login.html`、`login.js`、共通認証ガード `auth.js` を追加した。未ログイン時はログイン画面へ移動し、作業者は工数入力と本人履歴だけ、管理者は集計・Excel出力・各マスタ管理を使える方針にした
 - 2026-07-22、作業者権限では工数入力の作業者を本人に固定し、履歴画面は本人分だけ表示、削除ボタンは管理者だけに出すようにした
 - 2026-07-22、ログイン確認後に実行するRLS SQLとして `SUPABASE_AUTH_RLS_POLICIES.sql` を追加した。実行すると未ログインの公開キーでは対象テーブルを読めなくなるため、先にAuthユーザーと `user_profiles` の設定確認が必要
+- 2026-07-23、Supabase Authユーザー2名を作成し、`user_profiles` に登録済み。加藤さん作業者は `auth_user_id = 4d2abde5-8885-48b2-abef-c4398b714e61`、`worker_id = a2ab523d-2ee3-4db2-94b0-7877002126b0`、`role = worker`。管理者は `auth_user_id = a2db86d7-f1bb-45b3-8cb3-4925d9cfd590`、`role = system_admin`
+- 2026-07-23、作業者ログインで、入力画面の作業者が加藤に固定されること、通常リンクが履歴編集のみになること、集計・管理・作業者管理・作業内容管理・製番管理・単価管理・元請け管理へ直接アクセスしても権限エラーになることを確認した
+- 2026-07-23、管理者ログインで、集計画面、管理画面、作業者管理、作業内容管理、製番管理が開けることを確認した。Excel出力はユーザーのPCブラウザ上で実ファイル出力確認済み
+- 2026-07-23、`SUPABASE_AUTH_RLS_POLICIES.sql` をSupabase SQL Editorで実行済み。実行後、公開キーだけの未ログインRESTアクセスで `work_logs`、`worker_master`、`rate_master` が `401 permission denied` になることを確認した
+- 2026-07-23、RLS実行後も管理者ログインで集計画面の8件表示、管理トップの件数表示が動くことを確認した
 
 ## 現在残っている重要な注意点
 
@@ -136,7 +141,12 @@
 ### ログイン・権限管理
 
 フロント側のログイン画面と権限ガードは追加済み。
-ただし、Supabase側でAuthユーザーと `user_profiles` を設定し、ログイン確認後にRLS SQLを実行する必要がある。
+Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実行済み。
+
+設定済みユーザー:
+
+- 作業者 加藤: `auth_user_id = 4d2abde5-8885-48b2-abef-c4398b714e61`、`worker_id = a2ab523d-2ee3-4db2-94b0-7877002126b0`、`role = worker`
+- 管理者: `auth_user_id = a2db86d7-f1bb-45b3-8cb3-4925d9cfd590`、`role = system_admin`
 
 関連ファイル:
 
@@ -144,13 +154,18 @@
 - `SUPABASE_AUTH_PERMISSION_SETUP.sql`
 - `SUPABASE_AUTH_RLS_POLICIES.sql`
 
-実行順:
+実行済み:
 
 1. `SUPABASE_AUTH_PERMISSION_SETUP.sql`
 2. Supabase Authユーザー作成
 3. `user_profiles` 設定
 4. 管理者・作業者ログイン確認
 5. `SUPABASE_AUTH_RLS_POLICIES.sql`
+
+次に必要な確認:
+
+- RLS後に作業者ログインへ切り替え、工数入力と本人履歴が壊れていないことを再確認する
+- 本番Vercelでログイン必須・権限分け・RLS後の通常利用が動くことを確認する
 
 ### 大元請け
 
@@ -162,12 +177,11 @@
 
 商品化第一段階として、次は以下の順番が安全。
 
-1. Supabase SQL Editorで `SUPABASE_AUTH_PERMISSION_SETUP.sql` を実行し、Authユーザーと `user_profiles` を設定する
-2. 管理者ユーザーでログインし、集計、Excel出力、履歴、作業者管理、作業内容管理、製番管理が使えることを確認する
-3. 作業者ユーザーでログインし、工数入力の作業者が本人固定になり、履歴が本人分だけ表示され、管理画面・集計画面へ入れないことを確認する
-4. ログイン確認後に `SUPABASE_AUTH_RLS_POLICIES.sql` を実行し、匿名アクセス不可、作業者が他人の工数を読めない・更新できないことを確認する
-5. 明細Excel、表示中集計ExcelをPCブラウザから実際にダウンロードし、出力予定プレビューとファイル内タイトル・列・内容が一致するか目視確認する
-6. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
+1. RLS後に作業者ユーザーで再ログインし、工数入力の作業者が本人固定になり、履歴が本人分だけ表示され、管理画面・集計画面へ入れないことを再確認する
+2. 管理者ユーザーで履歴編集とExcel出力を再確認する
+3. 本番Vercelで、未ログインならログイン画面へ戻ること、管理者/作業者の権限分けが効くことを確認する
+4. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
+5. 商品化前のダミーデータ整理方針を決める。`CSV確認_*`、`Codex確認*` などの確認用作業者・作業内容・製番が残っているため、削除または非表示の扱いを確認する
 
 おすすめ方針:
 
@@ -178,16 +192,16 @@
 
 ## 直近コミット
 
+- `b2dce55 Add auth role separation`
+- `0aa733d Use Excel-only summary exports`
+- `2098f51 Hide daily monthly summary tabs`
 - `d47bee7 Add release checklist`
-- `51e186b Update next chat handoff`
 - `e777cc6 Hide billing features for work tracking release`
-- `8d07185 Add next chat handoff notes`
-- `581e00b Add auth permission SQL draft`
 
 注意:
 
-- `e777cc6` はGitHubへpush済みで、本番Vercelにも反映済み。
-- `d47bee7` までGitHubへpush済みで、`NEXT_CHAT_HANDOFF.md` と `RELEASE_CHECKLIST.md` も本番Vercelで取得できることを確認済み。
+- `b2dce55` はGitHubへpush済みで、本番Vercelへの反映対象。
+- `SUPABASE_AUTH_RLS_POLICIES.sql` は2026-07-23にSupabase SQL Editorで実行済み。
 - 新しいチャットでは `git status --short` と `git log -1 --oneline` を確認してから作業する。
 
 ## 未追跡ファイル
@@ -210,5 +224,5 @@
 
 ```text
 /Users/katomikihiko/kosu-app/NEXT_CHAT_HANDOFF.md を読んで、工数管理版として一旦商品化する方針で続きを進めてください。
-まずはSupabase Authのテストユーザー作成、user_profiles設定、管理者/作業者ログイン確認から進めてください。ログイン画面と権限ガード、RLS SQL案は追加済みです。
+Supabase Authの管理者・作業者ユーザー、user_profiles設定、RLS SQL実行は完了済みです。まずはRLS後の作業者ログイン再確認、本番Vercelでの権限確認、確認用ダミーデータ整理方針から進めてください。
 ```
