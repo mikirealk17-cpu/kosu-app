@@ -129,6 +129,7 @@
 - 2026-07-25、本番Vercelで作業者ログイン状態を再確認した。`billing-companies.html`、`summary.html`、`admin.html`、`rates.html` は直接URLでも「この画面を開く権限がありません」と表示され、通常導線から外れている
 - 2026-07-25、本番Vercelの作業者ログインで、工数入力画面は作業者が `加藤` に固定され、表示リンクは `履歴編集` のみ。履歴編集画面は作業者フィルタと編集用作業者が `加藤` 固定で、表示リンクは `工数入力` のみ。単価・請求・金額系の表示は通常導線に出ていない
 - 2026-07-25、`SUPABASE_DEMO_DATA_CLEANUP.sql` の削除条件を、マスタ3テーブルの同時 `using` から `exists` ベースに変更した。確認用作業者・作業内容・製番・備考に直接一致するログだけを削除対象にするため、より安全
+- 2026-07-25、削除・更新を含まない確認専用SQL `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql` を追加した。まずはこちらをSupabase SQL Editorで実行し、確認用データだけが表示されるか見る
 
 ## 現在残っている重要な注意点
 
@@ -158,6 +159,7 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 - `AUTH_PERMISSION_DESIGN.md`
 - `SUPABASE_AUTH_PERMISSION_SETUP.sql`
 - `SUPABASE_AUTH_RLS_POLICIES.sql`
+- `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql`
 - `SUPABASE_DEMO_DATA_CLEANUP.sql`
 
 実行済み:
@@ -171,7 +173,8 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 次に必要な確認:
 
 - 管理者で、履歴編集とExcel出力を必要に応じて再確認する
-- 確認用データ整理SQLは作成済みだが未実行。実行前に確認クエリ結果を必ず見る
+- 確認専用SQL `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql` は作成済みだが未実行。結果を見て、消してよい確認用データだけか必ず確認する
+- 確認用データ整理SQL `SUPABASE_DEMO_DATA_CLEANUP.sql` は作成済みだが未実行。確認専用SQLの結果を見てから実行する
 
 ### 大元請け
 
@@ -183,7 +186,7 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 
 商品化第一段階として、次は以下の順番が安全。
 
-1. `SUPABASE_DEMO_DATA_CLEANUP.sql` の確認クエリで `CSV確認_*`、`Codex確認*` などの確認用データ対象を確認し、問題なければ整理実行する
+1. `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql` で `CSV確認_*`、`Codex確認*` などの確認用データ対象を確認し、問題なければ `SUPABASE_DEMO_DATA_CLEANUP.sql` で整理実行する
 2. 管理者ユーザーで履歴編集とExcel出力を再確認する
 3. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
 4. 商品化前の実データ整理後に、管理者/作業者の本番権限確認をもう一度軽く通す
