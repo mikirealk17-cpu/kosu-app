@@ -114,18 +114,14 @@ where wl.note like 'CSV確認%'
 
 -- 確認用作業者は非表示にします。
 update public.worker_master
-set
-  is_active = false,
-  updated_at = now()
+set is_active = false
 where name like 'CSV確認_%'
    or name like 'Codex確認%'
    or name like 'Codex商品化確認%';
 
 -- 確認用作業内容は非表示にします。
 update public.work_type_master
-set
-  is_active = false,
-  updated_at = now()
+set is_active = false
 where name like 'CSV確認_%'
    or name like 'Codex確認%'
    or name like 'Codex商品化確認%';
