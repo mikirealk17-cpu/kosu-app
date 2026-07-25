@@ -78,24 +78,39 @@ begin;
 
 -- 確認用工数ログを削除します。
 delete from public.work_logs wl
-using public.worker_master wm, public.seiban_master sm, public.work_type_master wtm
-where (wl.worker_id = wm.id or wl.worker_id is null)
-  and (wl.seiban_id = sm.id or wl.seiban_id is null)
-  and (wl.work_type_id = wtm.id or wl.work_type_id is null)
-  and (
-    wm.name like 'CSV確認_%'
-    or wm.name like 'Codex確認%'
-    or wm.name like 'Codex商品化確認%'
-    or wtm.name like 'CSV確認_%'
-    or wtm.name like 'Codex確認%'
-    or wtm.name like 'Codex商品化確認%'
-    or sm.seiban like 'CSV-DEMO-%'
-    or sm.seiban like 'Codex確認%'
-    or sm.equipment_name like 'CSV確認_%'
-    or sm.equipment_name like 'Codex確認%'
-    or wl.note like 'CSV確認%'
-    or wl.note like 'Codex確認%'
-  );
+where wl.note like 'CSV確認%'
+   or wl.note like 'Codex確認%'
+   or exists (
+     select 1
+     from public.worker_master wm
+     where wm.id = wl.worker_id
+       and (
+         wm.name like 'CSV確認_%'
+         or wm.name like 'Codex確認%'
+         or wm.name like 'Codex商品化確認%'
+       )
+   )
+   or exists (
+     select 1
+     from public.work_type_master wtm
+     where wtm.id = wl.work_type_id
+       and (
+         wtm.name like 'CSV確認_%'
+         or wtm.name like 'Codex確認%'
+         or wtm.name like 'Codex商品化確認%'
+       )
+   )
+   or exists (
+     select 1
+     from public.seiban_master sm
+     where sm.id = wl.seiban_id
+       and (
+         sm.seiban like 'CSV-DEMO-%'
+         or sm.seiban like 'Codex確認%'
+         or sm.equipment_name like 'CSV確認_%'
+         or sm.equipment_name like 'Codex確認%'
+       )
+   );
 
 -- 確認用作業者は非表示にします。
 update public.worker_master
