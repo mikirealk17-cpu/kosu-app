@@ -6,7 +6,7 @@
 --
 -- 方針:
 -- - 作業者・作業内容は過去参照を壊さないため is_active = false にします。
--- - 製番は is_active がないため、確認用工数ログを消した後、未使用になった確認用製番だけ削除します。
+-- - 製番は rate_master などから参照される場合があるため、このSQLでは削除しません。
 -- - 実データを巻き込まないよう、名前/製番/設備名/備考の確認用プレフィックスに限定します。
 --
 -- 注意:
@@ -126,19 +126,8 @@ where name like 'CSV確認_%'
    or name like 'Codex確認%'
    or name like 'Codex商品化確認%';
 
--- 未使用になった確認用製番だけ削除します。
-delete from public.seiban_master sm
-where (
-    sm.seiban like 'CSV-DEMO-%'
-    or sm.seiban like 'Codex確認%'
-    or sm.equipment_name like 'CSV確認_%'
-    or sm.equipment_name like 'Codex確認%'
-  )
-  and not exists (
-    select 1
-    from public.work_logs wl
-    where wl.seiban_id = sm.id
-  );
+-- 確認用製番は削除しません。
+-- rate_master などから参照される場合があるため、DB整合性を優先して残します。
 
 commit;
 

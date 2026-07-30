@@ -131,6 +131,7 @@
 - 2026-07-25、`SUPABASE_DEMO_DATA_CLEANUP.sql` の削除条件を、マスタ3テーブルの同時 `using` から `exists` ベースに変更した。確認用作業者・作業内容・製番・備考に直接一致するログだけを削除対象にするため、より安全
 - 2026-07-25、削除・更新を含まない確認専用SQL `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql` を追加した。まずはこちらをSupabase SQL Editorで実行し、確認用データだけが表示されるか見る
 - 2026-07-25、`SUPABASE_DEMO_DATA_CLEANUP.sql` 実行時に `worker_master.updated_at` が存在しないためエラーになった。整理SQLから `updated_at = now()` を外し、`is_active = false` だけ更新するよう修正した。エラー時点ではトランザクションが失敗しているため、削除処理は完了していない前提
+- 2026-07-25、`SUPABASE_DEMO_DATA_CLEANUP.sql` 実行時に確認用製番が `rate_master` から参照されていて外部キーエラーになった。第1段階では製番削除を行わず、確認用工数ログ削除と作業者・作業内容の非表示だけに変更した。確認用製番が残るのは正常扱い
 
 ## 現在残っている重要な注意点
 
