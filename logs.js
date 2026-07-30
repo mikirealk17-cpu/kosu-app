@@ -477,10 +477,7 @@ async function loadWorkTypeFilterOptions() {
 }
 
 async function loadSeibanFilterOptions() {
-  const { data } = await supabase
-    .from('seiban_master')
-    .select('id, seiban, equipment_name')
-    .order('seiban')
+  const { data } = await fetchActiveSeibans()
 
   const select = document.getElementById('filter_seiban')
   select.innerHTML = '<option value="">全製番</option>'
@@ -492,6 +489,59 @@ async function loadSeibanFilterOptions() {
     option.textContent = `${item.seiban} ${item.equipment_name || ''}`.trim()
     select.appendChild(option)
   })
+}
+
+async function fetchActiveSeibans() {
+  const result = await supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name, is_active')
+    .eq('is_active', true)
+    .order('seiban')
+
+  if (!isMissingSeibanActiveColumn(result.error)) return result
+
+  return supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name')
+    .order('seiban')
+}
+
+function isMissingSeibanActiveColumn(error) {
+  if (!error) return false
+  return error.code === '42703' || String(error.message || '').includes('is_active')
+}
+
+async function findActiveSeibanByCode(seiban) {
+  const result = await supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name, is_active')
+    .eq('seiban', seiban)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!isMissingSeibanActiveColumn(result.error)) return result
+
+  return supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name')
+    .eq('seiban', seiban)
+    .maybeSingle()
+}
+
+async function insertActiveSeiban(payload) {
+  const result = await supabase
+    .from('seiban_master')
+    .insert({ ...payload, is_active: true })
+    .select()
+    .single()
+
+  if (!isMissingSeibanActiveColumn(result.error)) return result
+
+  return supabase
+    .from('seiban_master')
+    .insert(payload)
+    .select()
+    .single()
 }
 
 window.searchEditSeiban = async function() {
@@ -506,11 +556,7 @@ window.searchEditSeiban = async function() {
     return
   }
 
-  const { data, error } = await supabase
-    .from('seiban_master')
-    .select('*')
-    .eq('seiban', seiban)
-    .maybeSingle()
+  const { data, error } = await findActiveSeibanByCode(seiban)
 
   if (data) {
     equipmentInput.value = data.equipment_name
@@ -651,11 +697,7 @@ window.updateLog = async function() {
 }
 
 async function findOrCreateSeiban(seiban, equipmentName) {
-  const { data: existing, error: findError } = await supabase
-    .from('seiban_master')
-    .select('id')
-    .eq('seiban', seiban)
-    .maybeSingle()
+  const { data: existing, error: findError } = await findActiveSeibanByCode(seiban)
 
   if (findError) {
     console.error('製番の確認に失敗しました', findError)
@@ -665,11 +707,7 @@ async function findOrCreateSeiban(seiban, equipmentName) {
 
   if (existing) return existing.id
 
-  const { data: newSeiban, error: insertError } = await supabase
-    .from('seiban_master')
-    .insert({ seiban, equipment_name: equipmentName })
-    .select()
-    .single()
+  const { data: newSeiban, error: insertError } = await insertActiveSeiban({ seiban, equipment_name: equipmentName })
 
   if (insertError || !newSeiban) {
     console.error('製番の登録に失敗しました', insertError)

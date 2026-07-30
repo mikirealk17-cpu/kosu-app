@@ -133,6 +133,8 @@
 - 2026-07-25、`SUPABASE_DEMO_DATA_CLEANUP.sql` 実行時に `worker_master.updated_at` が存在しないためエラーになった。整理SQLから `updated_at = now()` を外し、`is_active = false` だけ更新するよう修正した。エラー時点ではトランザクションが失敗しているため、削除処理は完了していない前提
 - 2026-07-25、`SUPABASE_DEMO_DATA_CLEANUP.sql` 実行時に確認用製番が `rate_master` から参照されていて外部キーエラーになった。第1段階では製番削除を行わず、確認用工数ログ削除と作業者・作業内容の非表示だけに変更した。確認用製番が残るのは正常扱い
 - 2026-07-30、Supabase SQL Editorで `SUPABASE_DEMO_DATA_CLEANUP_RUN.sql` を実行し、確認用工数ログの実行後確認 `remaining_demo_logs = 0` を確認した。確認用作業者・作業内容は非表示化し、確認用製番は参照整合性を優先して残している
+- 2026-07-30、製番も削除ではなく非表示で運用できるように `SUPABASE_SEIBAN_ACTIVE_SETUP.sql` を追加した。`seiban_master.is_active` を追加し、`CSV-DEMO-*` / `CSV確認_*` / `Codex確認*` 系の確認用製番を非表示にするSQL。製番管理画面は「削除」ではなく「非表示/再表示」に変更済み
+- 2026-07-30、工数入力・履歴編集・集計の製番選択は、`seiban_master.is_active = true` の製番だけ表示するように変更した。SQL未実行環境でも壊れないよう、`is_active` 列がない場合は従来クエリへフォールバックする
 
 ## 現在残っている重要な注意点
 
@@ -164,6 +166,8 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 - `SUPABASE_AUTH_RLS_POLICIES.sql`
 - `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql`
 - `SUPABASE_DEMO_DATA_CLEANUP.sql`
+- `SUPABASE_DEMO_DATA_CLEANUP_RUN.sql`
+- `SUPABASE_SEIBAN_ACTIVE_SETUP.sql`
 
 実行済み:
 
@@ -177,7 +181,7 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 
 - 管理者で、履歴編集とExcel出力を必要に応じて再確認する
 - 確認用データ整理は `SUPABASE_DEMO_DATA_CLEANUP_RUN.sql` で実行済み。`remaining_demo_logs = 0` を確認済み
-- 確認用製番は `rate_master` などの参照があるため削除していない。画面上で邪魔になる場合は、製番マスタに `is_active` 相当の非表示設計を追加する
+- 確認用製番は `rate_master` などの参照があるため削除していない。通常導線から外すため、次に `SUPABASE_SEIBAN_ACTIVE_SETUP.sql` をSupabase SQL Editorで実行する
 
 ### 大元請け
 
@@ -190,9 +194,9 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 商品化第一段階として、次は以下の順番が安全。
 
 1. 管理者ユーザーで履歴編集とExcel出力を再確認する
-2. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
-3. 商品化前の実データ整理後に、管理者/作業者の本番権限確認をもう一度軽く通す
-4. 確認用製番が画面上で邪魔なら、製番マスタの非表示設計を追加する
+2. `SUPABASE_SEIBAN_ACTIVE_SETUP.sql` をSupabase SQL Editorで実行し、確認用製番が通常の製番選択肢から外れることを確認する
+3. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
+4. 商品化前の実データ整理後に、管理者/作業者の本番権限確認をもう一度軽く通す
 
 おすすめ方針:
 

@@ -258,10 +258,7 @@ async function loadWorkTypeOptions() {
 }
 
 async function loadSeibanOptions() {
-  const { data } = await supabase
-    .from('seiban_master')
-    .select('id, seiban, equipment_name')
-    .order('seiban')
+  const { data } = await fetchActiveSeibans()
 
   const select = document.getElementById('filter_seiban')
   select.innerHTML = '<option value="">全製番</option>'
@@ -273,6 +270,26 @@ async function loadSeibanOptions() {
     option.textContent = `${item.seiban} ${item.equipment_name || ''}`.trim()
     select.appendChild(option)
   })
+}
+
+async function fetchActiveSeibans() {
+  const result = await supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name, is_active')
+    .eq('is_active', true)
+    .order('seiban')
+
+  if (!isMissingSeibanActiveColumn(result.error)) return result
+
+  return supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name')
+    .order('seiban')
+}
+
+function isMissingSeibanActiveColumn(error) {
+  if (!error) return false
+  return error.code === '42703' || String(error.message || '').includes('is_active')
 }
 
 window.exportExcel = async function() {

@@ -4,9 +4,9 @@ import { requireAuth, ROLES } from './auth.js'
 await requireAuth([ROLES.ADMIN])
 
 const countTargets = [
-  { id: 'count_workers', table: 'worker_master', label: '作業者' },
-  { id: 'count_work_types', table: 'work_type_master', label: '作業内容' },
-  { id: 'count_seibans', table: 'seiban_master', label: '製番' },
+  { id: 'count_workers', table: 'worker_master', label: '作業者', activeOnly: true },
+  { id: 'count_work_types', table: 'work_type_master', label: '作業内容', activeOnly: true },
+  { id: 'count_seibans', table: 'seiban_master', label: '製番', activeOnly: true },
   { id: 'count_logs', table: 'work_logs', label: '工数記録' }
 ]
 
@@ -26,9 +26,21 @@ async function loadAdminCounts() {
 }
 
 async function loadCount(target) {
-  const { count, error } = await supabase
+  let query = supabase
     .from(target.table)
     .select('*', { count: 'exact', head: true })
+
+  if (target.activeOnly) query = query.eq('is_active', true)
+
+  let { count, error } = await query
+
+  if (target.activeOnly && isMissingActiveColumn(error)) {
+    const fallback = await supabase
+      .from(target.table)
+      .select('*', { count: 'exact', head: true })
+    count = fallback.count
+    error = fallback.error
+  }
 
   const el = document.getElementById(target.id)
 
@@ -40,6 +52,11 @@ async function loadCount(target) {
 
   el.textContent = String(count ?? 0)
   return { ok: true }
+}
+
+function isMissingActiveColumn(error) {
+  if (!error) return false
+  return error.code === '42703' || String(error.message || '').includes('is_active')
 }
 
 loadAdminCounts()

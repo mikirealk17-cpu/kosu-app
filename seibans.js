@@ -7,10 +7,7 @@ window.loadSeibans = async function() {
   const list = document.getElementById('seiban_list')
   list.innerHTML = ''
 
-  const { data, error } = await supabase
-    .from('seiban_master')
-    .select('*')
-    .order('seiban')
+  const { data, error } = await fetchSeibans()
 
   if (error || !data) {
     console.error('製番の取得に失敗しました', error)
@@ -34,7 +31,8 @@ window.loadSeibans = async function() {
     name.textContent = seiban.seiban
 
     const sub = document.createElement('span')
-    sub.textContent = seiban.equipment_name || '設備名未設定'
+    const isActive = seiban.is_active !== false
+    sub.textContent = `${seiban.equipment_name || '設備名未設定'} / ${isActive ? '使用中' : '非表示'}`
 
     const actions = document.createElement('div')
     actions.className = 'master-actions'
@@ -43,13 +41,13 @@ window.loadSeibans = async function() {
     editButton.textContent = '編集'
     editButton.addEventListener('click', () => editSeiban(seiban))
 
-    const deleteButton = document.createElement('button')
-    deleteButton.className = 'danger-btn'
-    deleteButton.textContent = '削除'
-    deleteButton.addEventListener('click', () => deleteSeiban(seiban.id))
+    const visibilityButton = document.createElement('button')
+    visibilityButton.className = isActive ? 'danger-btn' : ''
+    visibilityButton.textContent = isActive ? '非表示' : '再表示'
+    visibilityButton.addEventListener('click', () => toggleSeibanVisibility(seiban))
 
     text.append(name, sub)
-    actions.append(editButton, deleteButton)
+    actions.append(editButton, visibilityButton)
     item.append(text, actions)
     list.appendChild(item)
   })
@@ -64,9 +62,7 @@ window.addSeiban = async function() {
     return
   }
 
-  const { error } = await supabase
-    .from('seiban_master')
-    .insert({ seiban, equipment_name: equipmentName })
+  const { error } = await insertSeiban({ seiban, equipment_name: equipmentName })
 
   if (error) {
     console.error('製番の追加に失敗しました', error)
@@ -80,6 +76,33 @@ window.addSeiban = async function() {
   window.loadSeibans()
 }
 
+async function fetchSeibans() {
+  const result = await supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name, is_active')
+    .order('is_active', { ascending: false })
+    .order('seiban')
+
+  if (!isMissingColumnError(result.error)) return result
+
+  return supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name')
+    .order('seiban')
+}
+
+async function insertSeiban(payload) {
+  const result = await supabase
+    .from('seiban_master')
+    .insert({ ...payload, is_active: true })
+
+  if (!isMissingColumnError(result.error)) return result
+
+  return supabase
+    .from('seiban_master')
+    .insert(payload)
+}
+
 async function editSeiban(current) {
   const seiban = prompt('製番を入力してください', current.seiban)
   if (!seiban || !seiban.trim()) return
@@ -91,8 +114,7 @@ async function editSeiban(current) {
     .from('seiban_master')
     .update({
       seiban: seiban.trim(),
-      equipment_name: equipmentName.trim(),
-      updated_at: new Date().toISOString()
+      equipment_name: equipmentName.trim()
     })
     .eq('id', current.id)
 
@@ -106,22 +128,33 @@ async function editSeiban(current) {
   window.loadSeibans()
 }
 
-async function deleteSeiban(id) {
-  if (!confirm('この製番を削除しますか？過去の工数で使われている場合は削除できません。')) return
+async function toggleSeibanVisibility(seiban) {
+  const isActive = seiban.is_active !== false
+  const action = isActive ? '非表示' : '再表示'
+  if (!confirm(`この製番を${action}にしますか？`)) return
 
   const { error } = await supabase
     .from('seiban_master')
-    .delete()
-    .eq('id', id)
+    .update({ is_active: !isActive })
+    .eq('id', seiban.id)
 
   if (error) {
-    console.error('製番の削除に失敗しました', error)
-    showMessage('❌ 削除に失敗しました。過去の工数で使われている可能性があります。', 'error')
+    console.error(`製番の${action}に失敗しました`, error)
+    if (isMissingColumnError(error)) {
+      showMessage('❌ 非表示機能を使うには、先にSUPABASE_SEIBAN_ACTIVE_SETUP.sqlを実行してください', 'error')
+      return
+    }
+    showMessage(`❌ ${action}に失敗しました`, 'error')
     return
   }
 
-  showMessage('✅ 削除しました', 'success')
+  showMessage(`✅ ${action}にしました`, 'success')
   window.loadSeibans()
+}
+
+function isMissingColumnError(error) {
+  if (!error) return false
+  return error.code === '42703' || String(error.message || '').includes('is_active')
 }
 
 function showMessage(text, type) {

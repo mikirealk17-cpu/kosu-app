@@ -83,11 +83,7 @@ async function searchSeiban() {
     return
   }
 
-  const { data, error } = await supabase
-    .from('seiban_master')
-    .select('*')
-    .eq('seiban', seiban)
-    .maybeSingle()
+  const { data, error } = await findActiveSeiban(seiban)
 
   if (data) {
     equipmentInput.value = data.equipment_name
@@ -108,6 +104,44 @@ async function searchSeiban() {
   }
 
   calcActualTime()
+}
+
+async function findActiveSeiban(seiban) {
+  const result = await supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name, is_active')
+    .eq('seiban', seiban)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!isMissingSeibanActiveColumn(result.error)) return result
+
+  return supabase
+    .from('seiban_master')
+    .select('id, seiban, equipment_name')
+    .eq('seiban', seiban)
+    .maybeSingle()
+}
+
+function isMissingSeibanActiveColumn(error) {
+  if (!error) return false
+  return error.code === '42703' || String(error.message || '').includes('is_active')
+}
+
+async function insertActiveSeiban(payload) {
+  const result = await supabase
+    .from('seiban_master')
+    .insert({ ...payload, is_active: true })
+    .select()
+    .single()
+
+  if (!isMissingSeibanActiveColumn(result.error)) return result
+
+  return supabase
+    .from('seiban_master')
+    .insert(payload)
+    .select()
+    .single()
 }
 
 // 実働時間を計算
@@ -230,11 +264,7 @@ async function saveLog() {
 
   // 製番が未登録なら登録する
   let seibanId
-  const { data: existing, error: findSeibanError } = await supabase
-    .from('seiban_master')
-    .select('id')
-    .eq('seiban', seiban)
-    .maybeSingle()
+  const { data: existing, error: findSeibanError } = await findActiveSeiban(seiban)
 
   if (findSeibanError) {
     console.error('製番の確認に失敗しました', findSeibanError)
@@ -245,11 +275,7 @@ async function saveLog() {
   if (existing) {
     seibanId = existing.id
   } else {
-    const { data: newSeiban, error: insertSeibanError } = await supabase
-      .from('seiban_master')
-      .insert({ seiban, equipment_name: equipmentName })
-      .select()
-      .single()
+    const { data: newSeiban, error: insertSeibanError } = await insertActiveSeiban({ seiban, equipment_name: equipmentName })
 
     if (insertSeibanError || !newSeiban) {
       console.error('製番の登録に失敗しました', insertSeibanError)

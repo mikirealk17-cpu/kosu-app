@@ -48,6 +48,7 @@ DB側の下準備SQL案は `SUPABASE_AUTH_PERMISSION_SETUP.sql` に分けてい�
 2026-07-01時点で、現在接続中のSupabaseには作業者、元請け、単価自動適用に必要なテーブルと列が反映済みです。
 新規環境へ設定する場合は、`SUPABASE_SETUP.sql` と `SUPABASE_RATE_SETUP.sql` をSupabase SQL Editorで実行します。
 元請け対応だけを追加したい場合は、`SUPABASE_BILLING_COMPANY_SETUP.sql` を実行します。
+製番を削除ではなく非表示で運用する場合は、`SUPABASE_SEIBAN_ACTIVE_SETUP.sql` を実行します。
 これらのSQLは既存の工数データを自動変換せず、過去データを勝手に変更しない方針です。
 旧版で追加した大元請けテーブルや列は、データ破損を避けるため削除せず、現行画面・単価判定では使いません。
 ログイン・権限管理用のSQL案は `SUPABASE_AUTH_PERMISSION_SETUP.sql` にあります。
