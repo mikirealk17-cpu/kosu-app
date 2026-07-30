@@ -132,6 +132,7 @@
 - 2026-07-25、削除・更新を含まない確認専用SQL `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql` を追加した。まずはこちらをSupabase SQL Editorで実行し、確認用データだけが表示されるか見る
 - 2026-07-25、`SUPABASE_DEMO_DATA_CLEANUP.sql` 実行時に `worker_master.updated_at` が存在しないためエラーになった。整理SQLから `updated_at = now()` を外し、`is_active = false` だけ更新するよう修正した。エラー時点ではトランザクションが失敗しているため、削除処理は完了していない前提
 - 2026-07-25、`SUPABASE_DEMO_DATA_CLEANUP.sql` 実行時に確認用製番が `rate_master` から参照されていて外部キーエラーになった。第1段階では製番削除を行わず、確認用工数ログ削除と作業者・作業内容の非表示だけに変更した。確認用製番が残るのは正常扱い
+- 2026-07-30、Supabase SQL Editorで `SUPABASE_DEMO_DATA_CLEANUP_RUN.sql` を実行し、確認用工数ログの実行後確認 `remaining_demo_logs = 0` を確認した。確認用作業者・作業内容は非表示化し、確認用製番は参照整合性を優先して残している
 
 ## 現在残っている重要な注意点
 
@@ -175,8 +176,8 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 次に必要な確認:
 
 - 管理者で、履歴編集とExcel出力を必要に応じて再確認する
-- 確認専用SQL `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql` は作成済みだが未実行。結果を見て、消してよい確認用データだけか必ず確認する
-- 確認用データ整理SQL `SUPABASE_DEMO_DATA_CLEANUP.sql` は作成済みだが未実行。確認専用SQLの結果を見てから実行する
+- 確認用データ整理は `SUPABASE_DEMO_DATA_CLEANUP_RUN.sql` で実行済み。`remaining_demo_logs = 0` を確認済み
+- 確認用製番は `rate_master` などの参照があるため削除していない。画面上で邪魔になる場合は、製番マスタに `is_active` 相当の非表示設計を追加する
 
 ### 大元請け
 
@@ -188,10 +189,10 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 
 商品化第一段階として、次は以下の順番が安全。
 
-1. `SUPABASE_DEMO_DATA_CONFIRM_ONLY.sql` で `CSV確認_*`、`Codex確認*` などの確認用データ対象を確認し、問題なければ `SUPABASE_DEMO_DATA_CLEANUP.sql` で整理実行する
-2. 管理者ユーザーで履歴編集とExcel出力を再確認する
-3. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
-4. 商品化前の実データ整理後に、管理者/作業者の本番権限確認をもう一度軽く通す
+1. 管理者ユーザーで履歴編集とExcel出力を再確認する
+2. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
+3. 商品化前の実データ整理後に、管理者/作業者の本番権限確認をもう一度軽く通す
+4. 確認用製番が画面上で邪魔なら、製番マスタの非表示設計を追加する
 
 おすすめ方針:
 
