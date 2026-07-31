@@ -24,7 +24,7 @@
 
 - 金額、単価、請求、権限管理はミスの影響が大きい
 - ログインなしで金額を扱うと、他人の金額が見えるリスクがある
-- 工数入力、履歴編集、集計、CSV出力はすでに実用段階に近い
+- 工数入力、履歴編集、集計、Excel出力はすでに実用段階に近い
 - 商品化の第一段階では「誰が、いつ、どの製番で、何時間作業したか」に絞る方が安全
 
 ## 第1段階の商品化方針
@@ -37,8 +37,8 @@
 - 作業内容管理
 - 入力履歴編集
 - 集計画面
-- 明細CSV
-- 表示中の集計CSV
+- 明細Excel
+- 表示中の集計Excel
 - スマホで入力しやすいUI
 
 第1段階では控えめにする機能:
@@ -46,7 +46,7 @@
 - 単価管理
 - 請求確認CSV
 - 金額計算
-- ログイン・権限管理
+- 請求向けのCSV出力
 
 重要:
 
@@ -135,6 +135,9 @@
 - 2026-07-30、Supabase SQL Editorで `SUPABASE_DEMO_DATA_CLEANUP_RUN.sql` を実行し、確認用工数ログの実行後確認 `remaining_demo_logs = 0` を確認した。確認用作業者・作業内容は非表示化し、確認用製番は参照整合性を優先して残している
 - 2026-07-30、製番も削除ではなく非表示で運用できるように `SUPABASE_SEIBAN_ACTIVE_SETUP.sql` を追加した。`seiban_master.is_active` を追加し、`CSV-DEMO-*` / `CSV確認_*` / `Codex確認*` 系の確認用製番を非表示にするSQL。製番管理画面は「削除」ではなく「非表示/再表示」に変更済み
 - 2026-07-30、工数入力・履歴編集・集計の製番選択は、`seiban_master.is_active = true` の製番だけ表示するように変更した。SQL未実行環境でも壊れないよう、`is_active` 列がない場合は従来クエリへフォールバックする
+- 2026-07-31、本番Vercelの管理者ログインで `SUPABASE_SEIBAN_ACTIVE_SETUP.sql` 反映後の状態を確認した。製番管理では `CSV-DEMO-001` / `CSV-DEMO-002` / `CSV-DEMO-003` が `非表示` になり、ボタンは `再表示` になっている
+- 2026-07-31、本番Vercelの集計画面を再読み込みし、通常の製番フィルタから `CSV-DEMO` / `CSV確認` / `Codex確認` 系が消え、`全製番`、`A A`、`B B`、`OSZ-1000 テスト反転機` だけが表示されることを確認した
+- 2026-07-31、本番Vercelの管理者ログインで履歴編集画面も確認した。管理者用リンク、全作業者フィルタ、編集・削除ボタンが表示され、製番フィルタから確認用CSV-DEMO系が消えている
 
 ## 現在残っている重要な注意点
 
@@ -179,9 +182,9 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 
 次に必要な確認:
 
-- 管理者で、履歴編集とExcel出力を必要に応じて再確認する
+- 管理者で、集計画面と履歴編集画面は再確認済み。Excel出力はユーザーのPCブラウザで実ファイル出力確認済み
 - 確認用データ整理は `SUPABASE_DEMO_DATA_CLEANUP_RUN.sql` で実行済み。`remaining_demo_logs = 0` を確認済み
-- 確認用製番は `rate_master` などの参照があるため削除していない。通常導線から外すため、次に `SUPABASE_SEIBAN_ACTIVE_SETUP.sql` をSupabase SQL Editorで実行する
+- 確認用製番は `rate_master` などの参照があるため削除していない。`SUPABASE_SEIBAN_ACTIVE_SETUP.sql` 実行後、通常導線からは外れていることを本番で確認済み
 
 ### 大元請け
 
@@ -193,10 +196,9 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 
 商品化第一段階として、次は以下の順番が安全。
 
-1. 管理者ユーザーで履歴編集とExcel出力を再確認する
-2. `SUPABASE_SEIBAN_ACTIVE_SETUP.sql` をSupabase SQL Editorで実行し、確認用製番が通常の製番選択肢から外れることを確認する
-3. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
-4. 商品化前の実データ整理後に、管理者/作業者の本番権限確認をもう一度軽く通す
+1. iPhone実機で工数入力、履歴編集、集計、ファイル出力の横はみ出しや操作感を確認する
+2. 商品化前の実データ整理後に、管理者/作業者の本番権限確認をもう一度軽く通す
+3. 本番用の作業者・製番・作業内容マスタを、実運用に合わせて整える
 
 おすすめ方針:
 
@@ -208,6 +210,7 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 ## 直近コミット
 
 - `b2dce55 Add auth role separation`
+- `db376b6 Add seiban visibility management`
 - `0aa733d Use Excel-only summary exports`
 - `2098f51 Hide daily monthly summary tabs`
 - `d47bee7 Add release checklist`
