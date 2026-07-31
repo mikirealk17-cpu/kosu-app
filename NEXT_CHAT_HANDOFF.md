@@ -142,6 +142,7 @@
 - 2026-07-31、ログイン失敗時の案内を改善し、ログイン画面からパスワード再設定メールを送れるようにした。再設定メールのリンク先として `update-password.html` / `update-password.js` を追加し、新しいパスワード登録後はログイン画面へ戻す
 - 2026-07-31、Supabase Authentication の Redirect URLs に `https://kosu-app-kappa.vercel.app/update-password.html` を追加済み。Vercel本番で `update-password.html` が開けることも確認済み。実メールからのリセットリンク遷移確認は未実施
 - 2026-07-31、通常ログイン中に `update-password.html` を直接開いても更新フォームが有効にならないよう修正した。Supabaseの `PASSWORD_RECOVERY` イベントが来た場合だけ有効化する
+- 2026-08-01、本番Vercelの `https://kosu-app-kappa.vercel.app/update-password.html` を直接開き、パスワード入力欄と更新ボタンが無効、メッセージが「再設定リンクが確認できませんでした。ログイン画面から再設定メールを送り直してください。」になることを確認した
 
 ## 現在残っている重要な注意点
 
@@ -218,6 +219,7 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 - `db376b6 Add seiban visibility management`
 - `0aa733d Use Excel-only summary exports`
 - `2098f51 Hide daily monthly summary tabs`
+- `78a041a Restrict password update to recovery flow`
 - `d47bee7 Add release checklist`
 - `e777cc6 Hide billing features for work tracking release`
 
