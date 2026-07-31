@@ -11,19 +11,13 @@ setMessage('再設定リンクを確認しています...', 'info')
 setFormEnabled(false)
 
 supabase.auth.onAuthStateChange(event => {
-  if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-    hasRecoverySession = true
-    setFormEnabled(true)
-    setMessage('新しいパスワードを入力してください。', 'info')
+  if (event === 'PASSWORD_RECOVERY') {
+    allowPasswordUpdate()
   }
 })
 
-const { data: sessionData } = await supabase.auth.getSession()
-if (sessionData?.session) {
-  hasRecoverySession = true
-  setFormEnabled(true)
-  setMessage('新しいパスワードを入力してください。', 'info')
-} else {
+await supabase.auth.getSession()
+if (!hasRecoverySession) {
   setMessage('再設定リンクが確認できませんでした。ログイン画面から再設定メールを送り直してください。', 'error')
 }
 
@@ -73,4 +67,10 @@ function setFormEnabled(enabled) {
   newPasswordInput.disabled = !enabled
   confirmPasswordInput.disabled = !enabled
   form.querySelector('button').disabled = !enabled
+}
+
+function allowPasswordUpdate() {
+  hasRecoverySession = true
+  setFormEnabled(true)
+  setMessage('新しいパスワードを入力してください。', 'info')
 }
