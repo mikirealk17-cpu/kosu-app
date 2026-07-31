@@ -205,6 +205,10 @@ h2 {
   line-height: 1.7;
 }
 
+.auth-help {
+  margin: 14px 0 0;
+}
+
 .auth-actions {
   margin-top: 16px;
 }
@@ -226,6 +230,24 @@ h2 {
   font-weight: 800;
   text-align: center;
   text-decoration: none;
+}
+
+.auth-return-link {
+  margin-top: 10px;
+}
+
+.text-action {
+  color: var(--primary);
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.text-action:active,
+.text-action:hover {
+  color: var(--primary-dark);
+  background: var(--primary-soft);
 }
 
 /* ===== Forms ===== */
@@ -389,9 +411,16 @@ button:active {
     transform 0.18s ease;
 }
 
+#message.info,
 #message.success,
 #message.error {
   display: block;
+}
+
+#message.info {
+  border: 1px solid var(--line);
+  color: #344054;
+  background: #f8fafc;
 }
 
 #message.is-visible {
