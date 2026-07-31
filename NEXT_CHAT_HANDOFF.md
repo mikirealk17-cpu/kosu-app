@@ -140,6 +140,7 @@
 - 2026-07-31、本番Vercelの管理者ログインで履歴編集画面も確認した。管理者用リンク、全作業者フィルタ、編集・削除ボタンが表示され、製番フィルタから確認用CSV-DEMO系が消えている
 - 2026-07-31、本番Vercelを390px幅のブラウザで確認した。工数入力、履歴編集、集計、管理画面はいずれもページ全体の横はみ出しなし。通常画面にCSV、単価、請求、金額系の文言は出ていない
 - 2026-07-31、ログイン失敗時の案内を改善し、ログイン画面からパスワード再設定メールを送れるようにした。再設定メールのリンク先として `update-password.html` / `update-password.js` を追加し、新しいパスワード登録後はログイン画面へ戻す
+- 2026-07-31、Supabase Authentication の Redirect URLs に `https://kosu-app-kappa.vercel.app/update-password.html` を追加済み。Vercel本番で `update-password.html` が開けることも確認済み。実メールからのリセットリンク遷移確認は未実施
 
 ## 現在残っている重要な注意点
 
@@ -201,7 +202,7 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 1. iPhone実機で工数入力、履歴編集、集計、ファイル出力の操作感を確認する。390px幅のブラウザ確認では横はみ出しなし
 2. 商品化前の実データ整理後に、管理者/作業者の本番権限確認をもう一度軽く通す
 3. 本番用の作業者・製番・作業内容マスタを、実運用に合わせて整える
-4. Supabase Authentication の Redirect URLs に `https://kosu-app-kappa.vercel.app/update-password.html` を追加し、実メールでパスワード再設定を確認する
+4. 実メールでパスワード再設定リンクを受け取り、`update-password.html` へ戻って新パスワードを設定できることを確認する
 
 おすすめ方針:
 
