@@ -9,8 +9,10 @@ window.loadWorkTypes = async function() {
 
   const { data, error } = await supabase
     .from('work_type_master')
-    .select('*')
+    .select('id, name, sort_order, is_active')
+    .order('is_active', { ascending: false })
     .order('sort_order')
+    .order('name')
 
   if (error || !data) {
     console.error('作業内容の取得に失敗しました', error)
@@ -39,17 +41,19 @@ window.loadWorkTypes = async function() {
     const actions = document.createElement('div')
     actions.className = 'master-actions'
 
+    const isActive = type.is_active !== false
+
     const editButton = document.createElement('button')
     editButton.textContent = '編集'
     editButton.addEventListener('click', () => editWorkType(type))
 
-    const deleteButton = document.createElement('button')
-    deleteButton.className = 'danger-btn'
-    deleteButton.textContent = '削除'
-    deleteButton.addEventListener('click', () => deleteWorkType(type.id))
+    const visibilityButton = document.createElement('button')
+    visibilityButton.className = isActive ? 'danger-btn' : ''
+    visibilityButton.textContent = isActive ? '非表示' : '再表示'
+    visibilityButton.addEventListener('click', () => toggleWorkTypeVisibility(type))
 
     text.append(name, sub)
-    actions.append(editButton, deleteButton)
+    actions.append(editButton, visibilityButton)
     item.append(text, actions)
     list.appendChild(item)
   })
@@ -91,7 +95,7 @@ async function editWorkType(type) {
 
   const { error } = await supabase
     .from('work_type_master')
-    .update({ name: name.trim(), sort_order: sortOrder, is_active: true })
+    .update({ name: name.trim(), sort_order: sortOrder })
     .eq('id', type.id)
 
   if (error) {
@@ -104,21 +108,23 @@ async function editWorkType(type) {
   window.loadWorkTypes()
 }
 
-async function deleteWorkType(id) {
-  if (!confirm('この作業内容を削除しますか？過去データがある場合は非表示になります。')) return
+async function toggleWorkTypeVisibility(type) {
+  const isActive = type.is_active !== false
+  const action = isActive ? '非表示' : '再表示'
+  if (!confirm(`この作業内容を${action}にしますか？\n\n過去の工数データは残ります。`)) return
 
   const { error } = await supabase
     .from('work_type_master')
-    .update({ is_active: false })
-    .eq('id', id)
+    .update({ is_active: !isActive })
+    .eq('id', type.id)
 
   if (error) {
-    console.error('作業内容の削除に失敗しました', error)
-    showMessage('❌ 削除に失敗しました', 'error')
+    console.error(`作業内容の${action}に失敗しました`, error)
+    showMessage(`❌ ${action}に失敗しました`, 'error')
     return
   }
 
-  showMessage('✅ 削除しました', 'success')
+  showMessage(`✅ ${action}にしました`, 'success')
   window.loadWorkTypes()
 }
 

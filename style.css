@@ -670,6 +670,13 @@ tr:last-child td {
   margin-top: 4px;
 }
 
+.master-guidance {
+  margin: -2px 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .log-item,
 .admin-menu a,
 .master-item,

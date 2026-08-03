@@ -56,12 +56,12 @@ window.loadWorkers = async function() {
       editButton.textContent = '編集'
       editButton.addEventListener('click', () => editWorker(worker.id, worker.name))
 
-      const deleteButton = document.createElement('button')
-      deleteButton.className = 'icon-btn delete-btn'
-      deleteButton.textContent = '削除'
-      deleteButton.addEventListener('click', () => deleteWorker(worker.id, worker.name))
+      const hideButton = document.createElement('button')
+      hideButton.className = 'icon-btn delete-btn'
+      hideButton.textContent = '非表示'
+      hideButton.addEventListener('click', () => hideWorker(worker.id, worker.name))
 
-      actions.append(editButton, deleteButton)
+      actions.append(editButton, hideButton)
     } else {
       const restoreButton = document.createElement('button')
       restoreButton.className = 'icon-btn restore-btn'
@@ -115,7 +115,7 @@ window.editWorker = async function(id, oldName) {
   }
 }
 
-window.deleteWorker = async function(id, name) {
+window.hideWorker = async function(id, name) {
   if (!confirm(`${name} さんを非表示にしますか？\n\n過去の工数データは残ります。`)) return
 
   const { error } = await supabase
@@ -124,10 +124,10 @@ window.deleteWorker = async function(id, name) {
     .eq('id', id)
 
   if (error) {
-    console.error('作業者の削除に失敗しました', error)
-    showMessage('❌ 削除に失敗しました', 'error')
+    console.error('作業者の非表示に失敗しました', error)
+    showMessage('❌ 非表示に失敗しました', 'error')
   } else {
-    showMessage('✅ 削除しました', 'success')
+    showMessage('✅ 非表示にしました', 'success')
     window.loadWorkers()
   }
 }
