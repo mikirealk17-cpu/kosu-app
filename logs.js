@@ -5,6 +5,7 @@ import {
   fillRateTypeSelect,
   isContractRate
 } from './rate-utils.js'
+import { hasTimeOverlap } from './time-rules.mjs'
 
 const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
 const RATE_EDIT_ENABLED = false
@@ -14,6 +15,8 @@ let editingLog = null
 let workerFeatureEnabled = false
 let rateFeatureEnabled = false
 let billingCompanies = []
+let isUpdating = false
+const deletingLogIds = new Set()
 
 const today = new Date()
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -188,6 +191,12 @@ async function loadBillingCompanyOptions() {
 window.loadLogs = async function() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
+
+  if (!from || !to || from > to) {
+    showMessage('⚠️ 開始日と終了日の範囲を確認してください', 'error')
+    return
+  }
+
   const workerSelect = workerFeatureEnabled ? 'worker_id,' : ''
   const rateSelect = rateFeatureEnabled
     ? 'billing_company_id, rate_type, rate_master_id, unit_price, billing_amount,'
@@ -334,6 +343,8 @@ window.cancelEdit = function() {
 }
 
 async function deleteLog(id) {
+  if (deletingLogIds.has(id)) return
+
   if (!authContext.isAdmin) {
     showMessage('❌ 削除は管理者だけが実行できます', 'error')
     return
@@ -344,23 +355,34 @@ async function deleteLog(id) {
 
   if (!confirm(`${createDeleteConfirmText(target)}\n\nこの入力履歴を削除しますか？`)) return
 
-  const { error } = await supabase
-    .from('work_logs')
-    .delete()
-    .eq('id', id)
+  deletingLogIds.add(id)
 
-  if (error) {
-    console.error('入力履歴の削除に失敗しました', error)
-    showMessage('❌ 削除に失敗しました', 'error')
-    return
+  try {
+    const { data: deletedLog, error } = await supabase
+      .from('work_logs')
+      .delete()
+      .eq('id', id)
+      .select('id')
+      .maybeSingle()
+
+    if (error || !deletedLog) {
+      console.error('入力履歴の削除に失敗しました', error)
+      showMessage('❌ 削除に失敗しました。権限または通信状態を確認してください', 'error')
+      return
+    }
+
+    if (editingLog?.id === id) {
+      window.cancelEdit()
+    }
+
+    showMessage(`✅ 削除しました\n${createDeleteConfirmText(target)}`, 'success', 6000)
+    await window.loadLogs()
+  } catch (error) {
+    console.error('入力履歴の削除処理で予期しないエラーが発生しました', error)
+    showMessage('❌ 削除処理を完了できませんでした。通信状態を確認してください', 'error')
+  } finally {
+    deletingLogIds.delete(id)
   }
-
-  if (editingLog?.id === id) {
-    window.cancelEdit()
-  }
-
-  showMessage(`✅ 削除しました\n${createDeleteConfirmText(target)}`, 'success', 6000)
-  window.loadLogs()
 }
 
 function createDeleteConfirmText(log) {
@@ -578,10 +600,15 @@ window.searchEditSeiban = async function() {
 function calcEditActualTime() {
   const start = document.getElementById('edit_start_time').value
   const end = document.getElementById('edit_end_time').value
-  const break1 = parseInt(document.getElementById('edit_break1').value) || 0
-  const break2 = parseInt(document.getElementById('edit_break2').value) || 0
+  const break1 = Number(document.getElementById('edit_break1').value || 0)
+  const break2 = Number(document.getElementById('edit_break2').value || 0)
 
   if (!start || !end) return
+
+  if (!Number.isInteger(break1) || !Number.isInteger(break2) || break1 < 0 || break2 < 0) {
+    document.getElementById('edit_actual_time').textContent = '⚠️ 休憩時間を確認してください'
+    return
+  }
 
   const actual = timeToMinutes(end) - timeToMinutes(start) - break1 - break2
   const actualEl = document.getElementById('edit_actual_time')
@@ -595,6 +622,23 @@ function calcEditActualTime() {
 }
 
 window.updateLog = async function() {
+  if (isUpdating) return
+
+  isUpdating = true
+  setUpdateInProgress(true)
+
+  try {
+    await updateLogOnce()
+  } catch (error) {
+    console.error('入力履歴の更新処理で予期しないエラーが発生しました', error)
+    showMessage('❌ 更新処理を完了できませんでした。通信状態を確認して、もう一度お試しください', 'error')
+  } finally {
+    isUpdating = false
+    setUpdateInProgress(false)
+  }
+}
+
+async function updateLogOnce() {
   if (!editingLog) return
 
   const workDate = document.getElementById('edit_work_date').value
@@ -603,8 +647,8 @@ window.updateLog = async function() {
   const workTypeId = document.getElementById('edit_work_type').value
   const startTime = document.getElementById('edit_start_time').value
   const endTime = document.getElementById('edit_end_time').value
-  const break1 = parseInt(document.getElementById('edit_break1').value) || 0
-  const break2 = parseInt(document.getElementById('edit_break2').value) || 0
+  const break1 = Number(document.getElementById('edit_break1').value || 0)
+  const break2 = Number(document.getElementById('edit_break2').value || 0)
   const note = document.getElementById('edit_note').value.trim()
   const workerId = authContext.isWorker
     ? authContext.profile.worker_id
@@ -617,9 +661,44 @@ window.updateLog = async function() {
     return
   }
 
+  if (seiban.length > 100 || equipmentName.length > 200 || note.length > 1000) {
+    showMessage('⚠️ 製番・設備名・備考の文字数を確認してください', 'error')
+    return
+  }
+
+  if (workerFeatureEnabled && !workerId) {
+    showMessage('⚠️ 作業者を選択してください', 'error')
+    return
+  }
+
+  if (
+    !isValidTime(startTime)
+    || !isValidTime(endTime)
+    || !Number.isInteger(break1)
+    || !Number.isInteger(break2)
+    || break1 < 0
+    || break2 < 0
+    || break1 > 1440
+    || break2 > 1440
+  ) {
+    showMessage('⚠️ 開始・終了・休憩時間を正しく入力してください', 'error')
+    return
+  }
+
   const actualMinutes = timeToMinutes(endTime) - timeToMinutes(startTime) - break1 - break2
   if (actualMinutes <= 0) {
-    showMessage('⚠️ 開始・終了・休憩時間を確認してください', 'error')
+    showMessage('⚠️ 終了時間は開始時間より後にし、休憩時間は勤務時間より短くしてください', 'error')
+    return
+  }
+
+  const hasOverlap = await hasOverlappingTimeLog(workerId, workDate, startTime, endTime, editingLog.id)
+  if (hasOverlap === null) {
+    showMessage('❌ 時間の重複確認に失敗したため更新できません。通信状態を確認してください', 'error')
+    return
+  }
+
+  if (hasOverlap && !confirm('同じ作業者・同じ日付で時間が重なる入力があります。このまま更新しますか？')) {
+    showMessage('⚠️ 更新を中止しました', 'error')
     return
   }
 
@@ -679,14 +758,16 @@ window.updateLog = async function() {
     actualMinutes
   })
 
-  const { error } = await supabase
+  const { data: updatedLog, error } = await supabase
     .from('work_logs')
     .update(updateData)
     .eq('id', editingLog.id)
+    .select('id')
+    .maybeSingle()
 
-  if (error) {
+  if (error || !updatedLog) {
     console.error('入力履歴の更新に失敗しました', error)
-    showMessage('❌ 更新に失敗しました', 'error')
+    showMessage('❌ 更新に失敗しました。権限または通信状態を確認してください', 'error')
     return
   }
 
@@ -694,6 +775,40 @@ window.updateLog = async function() {
   editingLog = null
   document.getElementById('edit_panel').classList.remove('active')
   window.loadLogs()
+}
+
+function setUpdateInProgress(inProgress) {
+  const button = document.getElementById('update_button')
+  if (!button) return
+  button.disabled = inProgress
+  button.textContent = inProgress ? '更新中...' : '更新する'
+}
+
+function isValidTime(value) {
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return false
+  return Number.isFinite(timeToMinutes(value))
+}
+
+async function hasOverlappingTimeLog(workerId, workDate, startTime, endTime, excludedId) {
+  if (!workerFeatureEnabled || !workerId) return false
+
+  let query = supabase
+    .from('work_logs')
+    .select('id, start_time, end_time')
+    .eq('work_date', workDate)
+    .eq('worker_id', workerId)
+
+  if (excludedId) query = query.neq('id', excludedId)
+
+  const { data, error } = await query
+  if (error || !data) {
+    console.error('重複確認に失敗しました', error)
+    return null
+  }
+
+  return data.some(log => (
+    hasTimeOverlap(startTime, endTime, log.start_time, log.end_time)
+  ))
 }
 
 async function findOrCreateSeiban(seiban, equipmentName) {

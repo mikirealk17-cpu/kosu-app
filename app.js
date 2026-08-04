@@ -5,6 +5,7 @@ import {
   fillRateTypeSelect,
   isContractRate
 } from './rate-utils.js'
+import { hasTimeOverlap } from './time-rules.mjs'
 
 const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
 const BILLING_INPUT_ENABLED = false
@@ -14,6 +15,7 @@ let workerFeatureEnabled = false
 let billingCompanyFeatureEnabled = false
 let rateFeatureEnabled = false
 let messageTimer = null
+let isSaving = false
 const LAST_BILLING_COMPANY_KEY_PREFIX = 'kosu_last_billing_company_'
 
 // 今日の日付をセットします。toISOString()はUTC基準なので、日本時間では日付がずれることがあります。
@@ -216,6 +218,23 @@ function timeToMinutes(time) {
 
 // 保存する
 async function saveLog() {
+  if (isSaving) return
+
+  isSaving = true
+  setSaveInProgress(true)
+
+  try {
+    await saveLogOnce()
+  } catch (error) {
+    console.error('工数の保存処理で予期しないエラーが発生しました', error)
+    showMessage('❌ 保存処理を完了できませんでした。通信状態を確認して、もう一度お試しください', 'error')
+  } finally {
+    isSaving = false
+    setSaveInProgress(false)
+  }
+}
+
+async function saveLogOnce() {
   const workerId = getCurrentWorkerId()
   const billingCompanyId = BILLING_INPUT_ENABLED ? document.getElementById('billing_company').value : ''
   const rateType = RATE_INPUT_ENABLED ? document.getElementById('rate_type').value : ''
@@ -231,6 +250,11 @@ async function saveLog() {
 
   if (!seiban || !equipmentName || !workTypeId || !workDate || !startTime || !endTime) {
     showMessage('⚠️ 必須項目を入力してください', 'error')
+    return
+  }
+
+  if (seiban.length > 100 || equipmentName.length > 200 || note.length > 1000) {
+    showMessage('⚠️ 製番・設備名・備考の文字数を確認してください', 'error')
     return
   }
 
@@ -251,12 +275,22 @@ async function saveLog() {
 
   const actualMinutes = timeToMinutes(endTime) - timeToMinutes(startTime) - break1 - break2
 
+  if (break1 < 0 || break2 < 0 || break1 > 1440 || break2 > 1440) {
+    showMessage('⚠️ 休憩時間は0〜1440分の整数で入力してください', 'error')
+    return
+  }
+
   if (actualMinutes <= 0) {
-    showMessage('⚠️ 開始・終了・休憩時間を確認してください', 'error')
+    showMessage('⚠️ 終了時間は開始時間より後にし、休憩時間は勤務時間より短くしてください', 'error')
     return
   }
 
   const hasDuplicate = await hasDuplicateTimeLog(workerId, workDate, startTime, endTime)
+  if (hasDuplicate === null) {
+    showMessage('❌ 時間の重複確認に失敗したため保存できません。通信状態を確認してください', 'error')
+    return
+  }
+
   if (hasDuplicate && !confirm('同じ作業者・同じ日付で時間が重なる入力があります。このまま保存しますか？')) {
     showMessage('⚠️ 保存を中止しました', 'error')
     return
@@ -328,11 +362,13 @@ async function saveLog() {
     logData.billing_amount = appliedRate.billingAmount
   }
 
-  const { error } = await supabase
+  const { data: savedLog, error } = await supabase
     .from('work_logs')
     .insert(logData)
+    .select('id')
+    .single()
 
-  if (error) {
+  if (error || !savedLog) {
     console.error('工数の保存に失敗しました', error)
     showMessage('❌ 保存に失敗しました', 'error')
   } else {
@@ -347,6 +383,13 @@ async function saveLog() {
     }), 'success')
     resetFormForNextInput()
   }
+}
+
+function setSaveInProgress(inProgress) {
+  const button = document.getElementById('save_button')
+  if (!button) return
+  button.disabled = inProgress
+  button.textContent = inProgress ? '保存中...' : '保存する'
 }
 
 function createSavedLogMessage({ workDate, seiban, equipmentName, startTime, endTime, actualMinutes }) {
@@ -393,17 +436,12 @@ async function hasDuplicateTimeLog(workerId, workDate, startTime, endTime) {
 
   if (error || !data) {
     console.error('重複確認に失敗しました', error)
-    return false
+    return null
   }
 
-  const startMin = timeToMinutes(startTime)
-  const endMin = timeToMinutes(endTime)
-
-  return data.some(log => {
-    const logStart = timeToMinutes(log.start_time)
-    const logEnd = timeToMinutes(log.end_time)
-    return startMin < logEnd && endMin > logStart
-  })
+  return data.some(log => (
+    hasTimeOverlap(startTime, endTime, log.start_time, log.end_time)
+  ))
 }
 
 function getCurrentWorkerId() {

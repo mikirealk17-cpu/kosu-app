@@ -1,4 +1,6 @@
 -- 工数管理版として商品化する前に、匿名ユーザーから金額系データを隠すためのSQLです。
+-- 重要: これはSupabase Auth導入前の段階用です。
+-- SUPABASE_AUTH_RLS_POLICIES.sql 実行済みの本番へ再実行するとanon権限を戻すため、再実行しないでください。
 -- Supabase SQL Editorで実行してください。
 --
 -- 方針:

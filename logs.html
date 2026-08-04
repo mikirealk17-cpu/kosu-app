@@ -91,13 +91,13 @@
       <div class="field-grid two-columns">
         <div class="form-group">
           <label>製番</label>
-          <input type="text" id="edit_seiban" placeholder="例: A001" oninput="searchEditSeiban()">
+          <input type="text" id="edit_seiban" maxlength="100" placeholder="例: A001" oninput="searchEditSeiban()">
           <span id="edit_seiban_status"></span>
         </div>
 
         <div class="form-group">
           <label>設備名</label>
-          <input type="text" id="edit_equipment_name" placeholder="製番を入力すると自動表示">
+          <input type="text" id="edit_equipment_name" maxlength="200" placeholder="製番を入力すると自動表示">
         </div>
       </div>
 
@@ -121,12 +121,12 @@
       <div class="field-grid two-columns">
         <div class="form-group">
           <label>休憩① (分)</label>
-          <input type="number" id="edit_break1" value="0" min="0">
+          <input type="number" id="edit_break1" value="0" min="0" max="1440" step="1">
         </div>
 
         <div class="form-group">
           <label>休憩② (分)</label>
-          <input type="number" id="edit_break2" value="0" min="0">
+          <input type="number" id="edit_break2" value="0" min="0" max="1440" step="1">
         </div>
       </div>
 
@@ -137,11 +137,11 @@
 
       <div class="form-group">
         <label>備考</label>
-        <textarea id="edit_note" rows="3" placeholder="任意"></textarea>
+        <textarea id="edit_note" rows="3" maxlength="1000" placeholder="任意（1000文字まで）"></textarea>
       </div>
 
       <div class="button-row">
-        <button onclick="updateLog()">更新する</button>
+        <button type="button" id="update_button" onclick="updateLog()">更新する</button>
         <button class="secondary-btn" onclick="cancelEdit()">キャンセル</button>
       </div>
     </section>

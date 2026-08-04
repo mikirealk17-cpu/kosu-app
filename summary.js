@@ -8,6 +8,8 @@ const BILLING_COMPANY_CSV_ENABLED = false
 let currentTab = 'seiban'
 let workerNameMap = {}
 let billingCompanyNameMap = {}
+let displayedRows = []
+let displayedDataSignature = ''
 
 const summaryExcelLabels = {
   seiban: '製番別Excel',
@@ -36,18 +38,26 @@ window.loadData = async function() {
   updateExportPreview()
   setSummaryStatus('集計を更新中です...')
 
+  const from = document.getElementById('date_from').value
+  const to = document.getElementById('date_to').value
+  if (!from || !to) {
+    setSummaryStatus('開始日と終了日を入力してください')
+    return false
+  }
+
+  if (from > to) {
+    setSummaryStatus('開始日は終了日以前にしてください')
+    return false
+  }
+
   if (currentTab === 'worker') {
-    await loadWorkerSummary()
-    return
+    return loadWorkerSummary()
   }
 
   if (currentTab === 'billing_company') {
-    await loadBillingCompanySummary()
-    return
+    return loadBillingCompanySummary()
   }
 
-  const from = document.getElementById('date_from').value
-  const to = document.getElementById('date_to').value
   const filters = getFilters()
 
   let query = supabase
@@ -80,10 +90,12 @@ window.loadData = async function() {
     const message = error?.message ? `データの取得に失敗しました: ${escapeHtml(error.message)}` : 'データの取得に失敗しました'
     document.getElementById('summary_table').innerHTML = `<p>${message}</p>`
     renderSummaryMetrics([])
+    clearDisplayedRows()
     setSummaryStatus('集計の取得に失敗しました')
-    return
+    return false
   }
 
+  rememberDisplayedRows(data)
   renderSummaryMetrics(data)
   if (currentTab === 'seiban') renderSeiban(data)
   if (currentTab === 'seiban_detail') {
@@ -93,6 +105,7 @@ window.loadData = async function() {
   if (currentTab === 'daily') renderDaily(data)
   if (currentTab === 'monthly') renderMonthly(data)
   setSummaryStatus(`${data.length}件のデータを表示しました`)
+  return true
 }
 
 function updateSummaryExcelOption() {
@@ -305,6 +318,12 @@ window.exportExcel = async function() {
   if (exportType === 'summary') exportType = 'summary_excel'
 
   try {
+    const refreshed = await window.loadData()
+    if (!refreshed) {
+      alert('集計データを更新できなかったため、Excel出力を中止しました')
+      return
+    }
+
     let success
     if (exportType === 'summary_excel') {
       success = await exportSummaryExcel()
@@ -322,6 +341,9 @@ window.exportExcel = async function() {
     }
 
     if (button) button.textContent = success === false ? originalText : '出力しました'
+  } catch (error) {
+    console.error('Excel出力処理で予期しないエラーが発生しました', error)
+    alert('Excel出力を完了できませんでした。通信状態を確認して、もう一度お試しください')
   } finally {
     if (button) {
       setTimeout(() => {
@@ -378,6 +400,11 @@ async function exportDetailExcel() {
     return false
   }
 
+  if (exportRows.rows.length === 0) {
+    alert('指定した期間・絞り込み条件に出力できるデータがありません')
+    return false
+  }
+
   downloadExcel(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.xls`, exportRows.meta)
   return true
 }
@@ -385,7 +412,7 @@ async function exportDetailExcel() {
 async function createDetailExportRows() {
   const from = document.getElementById('date_from').value
   const to = document.getElementById('date_to').value
-  const data = await fetchSummaryRows()
+  const data = await getDisplayedRowsForExport()
 
   await loadWorkerNameMap()
 
@@ -428,6 +455,11 @@ async function exportSummaryExcel() {
     return false
   }
 
+  if (exportRows.rows.length === 0) {
+    alert('指定した期間・絞り込み条件に出力できるデータがありません')
+    return false
+  }
+
   downloadExcel(exportRows.headers, exportRows.rows, `${exportRows.filenameBase}.xls`, exportRows.meta)
   return true
 }
@@ -441,7 +473,7 @@ async function createSummaryExportRows() {
     data = await fetchBillingCompanyRows()
     await loadBillingCompanyNameMap()
   } else {
-    data = await fetchSummaryRows()
+    data = await getDisplayedRowsForExport()
   }
 
   if (currentTab !== 'billing_company') {
@@ -865,47 +897,71 @@ function createBillingCompanyInvoiceRows(data, from, to) {
 }
 
 async function loadWorkerSummary() {
-  const from = document.getElementById('date_from').value
-  const to = document.getElementById('date_to').value
-  const filters = getFilters()
-
-  let query = supabase
-    .from('work_logs')
-    .select('actual_minutes, worker_id, seiban_id, work_type_id')
-    .gte('work_date', from)
-    .lte('work_date', to)
-
-  query = applyFilters(query, filters)
-
-  const { data, error } = await query
-
-  if (error || !data) {
+  let data
+  try {
+    data = await fetchSummaryRows()
+  } catch (error) {
     console.error('作業者別集計データの取得に失敗しました', error)
     document.getElementById('summary_table').innerHTML = '<p>作業者別集計には、Supabase側でworker_masterとwork_logs.worker_idの設定が必要です</p>'
     renderSummaryMetrics([])
+    clearDisplayedRows()
     setSummaryStatus('作業者別集計の取得に失敗しました')
-    return
+    return false
   }
 
   await loadWorkerNameMap()
+  rememberDisplayedRows(data)
   renderSummaryMetrics(data)
   renderWorker(data)
   setSummaryStatus(`${data.length}件のデータを表示しました`)
+  return true
 }
 
 async function loadBillingCompanySummary() {
   try {
     const data = await fetchBillingCompanyRows()
     await loadBillingCompanyNameMap()
+    rememberDisplayedRows(data)
     renderSummaryMetrics(data)
     renderBillingCompany(data)
     setSummaryStatus(`${data.length}件のデータを表示しました`)
+    return true
   } catch (error) {
     console.error('元請け別集計データの取得に失敗しました', error)
     document.getElementById('summary_table').innerHTML = '<p>元請け別集計には、Supabase側で元請けDB設定が必要です</p>'
     renderSummaryMetrics([])
+    clearDisplayedRows()
     setSummaryStatus('元請け別集計の取得に失敗しました')
+    return false
   }
+}
+
+function createDataSignature() {
+  const filters = getFilters()
+  return JSON.stringify({
+    tab: currentTab,
+    from: document.getElementById('date_from').value,
+    to: document.getElementById('date_to').value,
+    ...filters
+  })
+}
+
+function rememberDisplayedRows(data) {
+  displayedRows = data
+  displayedDataSignature = createDataSignature()
+}
+
+function clearDisplayedRows() {
+  displayedRows = []
+  displayedDataSignature = ''
+}
+
+async function getDisplayedRowsForExport() {
+  if (displayedDataSignature === createDataSignature()) {
+    return displayedRows
+  }
+
+  return fetchSummaryRows()
 }
 
 async function fetchBillingCompanyRows() {

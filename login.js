@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient.js'
 import { loadUserProfile, ROLES } from './auth.js'
+import { ALLOWED_REDIRECT_PAGES, getSafeLocalRedirect } from './login-redirect.mjs'
 
 const form = document.getElementById('login_form')
 const emailInput = document.getElementById('login_email')
@@ -47,8 +48,8 @@ async function routeLoggedInUser(authUserId) {
     return
   }
 
-  const redirect = params.get('redirect')
-  if (redirect && isSafeLocalPath(redirect) && isRoleAllowedForPath(profile.role, redirect)) {
+  const redirect = getSafeLocalRedirect(params.get('redirect'), location)
+  if (redirect && isRoleAllowedForPath(profile.role, redirect)) {
     location.href = redirect
     return
   }
@@ -57,14 +58,10 @@ async function routeLoggedInUser(authUserId) {
 }
 
 function isRoleAllowedForPath(role, path) {
-  if (role === ROLES.ADMIN) return true
-  const workerAllowed = ['index.html', 'logs.html']
   const page = path.split('?')[0]
+  if (role === ROLES.ADMIN) return ALLOWED_REDIRECT_PAGES.has(page)
+  const workerAllowed = ['index.html', 'logs.html']
   return workerAllowed.includes(page)
-}
-
-function isSafeLocalPath(path) {
-  return !path.startsWith('http://') && !path.startsWith('https://') && !path.startsWith('//')
 }
 
 function showReasonMessage(reason) {
