@@ -21,11 +21,13 @@
       <div class="add-form">
         <input type="text" id="new_seiban" placeholder="製番">
         <input type="text" id="new_equipment_name" placeholder="設備名">
+        <input type="text" id="new_customer_name" placeholder="客先名（任意）">
         <button onclick="addSeiban()">追加</button>
       </div>
     </div>
 
     <p class="master-guidance">使わなくなった製番は削除せず非表示にします。過去の工数データは残り、必要なときは再表示できます。</p>
+    <p class="master-guidance">作業者が追加した生産番号は未確認として表示されます。内容を確認してから確認済みにしてください。</p>
 
     <div id="seiban_list" class="master-list"></div>
     <div id="message"></div>

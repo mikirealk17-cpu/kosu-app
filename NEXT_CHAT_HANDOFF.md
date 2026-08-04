@@ -146,6 +146,7 @@
 - 2026-08-03、保存・更新の連打防止、編集時の時間帯重複警告、重複確認通信失敗時の安全停止、0件Excel案内、ログインredirect許可リストを作業用コピーへ実装した
 - 2026-08-03、監査ログSQL、バックアップ・復旧手順、複数会社移行計画、β版公開状況を追加した。本番DBへの監査SQL適用とVercelデプロイは未実施
 - 2026-08-04、上記のβ安全修正と追加ドキュメントを元リポジトリ `/Users/katomikihiko/kosu-app` へ反映し、ローカルコミット `Improve beta release safety` を作成した。GitHub pushは認証情報未設定で失敗したため、Vercelデプロイと本番DBへの監査SQL適用は未実施
+- 2026-08-04、作業者による生産番号登録対応を元リポジトリへ反映し、ローカルコミット `Add worker production number registration` を作成した。`production-number-utils.mjs`、工数入力/履歴編集の候補検索・仮登録、製番管理の未確認一覧・確認済み更新・統合導線、`SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql`、静的テストを追加した。push、Vercelデプロイ、本番DB適用は未実施
 - 2026-07-31、通常ログイン中に `update-password.html` を直接開いても更新フォームが有効にならないよう修正した。Supabaseの `PASSWORD_RECOVERY` イベントが来た場合だけ有効化する
 - 2026-08-01、本番Vercelの `https://kosu-app-kappa.vercel.app/update-password.html` を直接開き、パスワード入力欄と更新ボタンが無効、メッセージが「再設定リンクが確認できませんでした。ログイン画面から再設定メールを送り直してください。」になることを確認した
 
@@ -207,11 +208,12 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 
 商品化第一段階として、次は以下の順番が安全。
 
-1. ローカルコミットを `origin/main` へpushし、Vercelへデプロイする
+1. GitHub認証を解決し、ローカルコミットを `origin/main` へpushしてVercelへデプロイする
 2. Supabaseの現在プランとバックアップ保持状況を確認し、β開始前バックアップを取得する
-3. `SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認後、本番へ適用する
-4. iPhone実機で工数入力、履歴編集、集計、ファイル出力の操作感を確認する。390px幅のブラウザ確認では横はみ出しなし
-5. 管理者/作業者の本番権限、保存連打、編集時重複警告を再確認する
+3. `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` の重複確認クエリを実行し、重複0件なら本番へ適用する
+4. `SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認後、本番へ適用する
+5. iPhone実機で工数入力、履歴編集、集計、ファイル出力、生産番号候補検索・仮登録の操作感を確認する。390px幅のブラウザ確認では横はみ出しなし
+6. 管理者/作業者の本番権限、保存連打、編集時重複警告、生産番号の確認済み更新・統合を再確認する
 
 おすすめ方針:
 
@@ -256,5 +258,5 @@ Supabase側でAuthユーザーと `user_profiles` を設定し、RLS SQLも実�
 
 ```text
 /Users/katomikihiko/kosu-app/NEXT_CHAT_HANDOFF.md を読んで、工数管理版として一旦商品化する方針で続きを進めてください。
-Supabase Auth、user_profiles、RLS、確認用データ整理、本番用マスタ確認、実メールのパスワード再設定、β安全修正の元リポジトリ反映とローカルコミットは完了済みです。GitHub pushは認証情報未設定で未完了です。次はpush・Vercelデプロイ、バックアップ確認、監査ログSQLの段階適用、iPhone実機確認から進めてください。
+Supabase Auth、user_profiles、RLS、確認用データ整理、本番用マスタ確認、実メールのパスワード再設定、β安全修正、生産番号登録対応の元リポジトリ反映とローカルコミットは完了済みです。GitHub pushは認証情報未設定で未完了です。次は `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` の重複確認と適用、push・Vercelデプロイ、iPhone実機確認から進めてください。
 ```

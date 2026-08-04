@@ -1,6 +1,6 @@
 # 工数管理アプリ β版公開状況
 
-更新日: 2026-08-03
+更新日: 2026-08-04
 
 ## 判定
 
@@ -31,10 +31,14 @@
 - バックアップと別環境復元の手順を文書化。
 - β安全修正と追加ドキュメントを元リポジトリ `/Users/katomikihiko/kosu-app` へ反映。
 - ローカルコミットを作成。GitHub pushは認証情報未設定で未完了。
+- 生産番号の正規化共通関数、作業者による候補検索・仮登録、管理者の未確認確認・統合導線を元リポジトリへ反映。
+- `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を追加。`seiban_key` UNIQUE制約、`pending/confirmed`、登録者・確認者、統合RPCを含む。
 
 ## 公開前必須
 
 - [ ] ローカルコミットを `origin/main` へpushし、Vercelへデプロイする。
+- [ ] デプロイ前に `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` の重複確認クエリを実行し、重複0件を確認してから本番へ適用する。
+- [ ] 生産番号の表記揺れ、作業者仮登録、管理者確認、統合を本番DB適用後に確認する。
 - [ ] デプロイ後、管理者・作業者の両方で保存、編集、権限制御を再確認する。
 - [ ] DBバックアップ取得後、`SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認してから本番へ適用する。
 - [ ] `SUPABASE_BETA_VALIDATION_SETUP.sql` をテスト環境で確認し、既存データ違反がないことを確認してから本番へ適用する。

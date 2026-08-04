@@ -400,6 +400,54 @@ button:active {
   background: var(--danger);
 }
 
+.register-seiban-btn {
+  width: 100%;
+  margin-top: 8px;
+  border-color: #f4b740;
+  color: #8a5400;
+  background: #fff8e6;
+}
+
+.seiban-suggestions {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.seiban-suggestion,
+.seiban-suggestion-empty {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: #344054;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.seiban-suggestion {
+  cursor: pointer;
+}
+
+.seiban-suggestion.is-selected {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: 800;
+}
+
+.seiban-suggestion-empty {
+  color: var(--muted);
+}
+
+.master-item.is-pending {
+  border-color: #f4b740;
+  background: #fffdf5;
+}
+
 #message {
   display: none;
   margin-top: 12px;

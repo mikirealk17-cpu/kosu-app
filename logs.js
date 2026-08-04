@@ -6,6 +6,13 @@ import {
   isContractRate
 } from './rate-utils.js'
 import { hasTimeOverlap } from './time-rules.mjs'
+import {
+  createProductionNumberKey,
+  formatProductionNumberLabel,
+  getProductionNumberKey,
+  isSimilarProductionNumber,
+  normalizeProductionNumber
+} from './production-number-utils.mjs'
 
 const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
 const RATE_EDIT_ENABLED = false
@@ -16,6 +23,9 @@ let workerFeatureEnabled = false
 let rateFeatureEnabled = false
 let billingCompanies = []
 let isUpdating = false
+let isRegisteringEditSeiban = false
+let selectedEditSeiban = null
+let editSeibanSearchSeq = 0
 const deletingLogIds = new Set()
 
 const today = new Date()
@@ -516,11 +526,11 @@ async function loadSeibanFilterOptions() {
 async function fetchActiveSeibans() {
   const result = await supabase
     .from('seiban_master')
-    .select('id, seiban, equipment_name, is_active')
+    .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
     .eq('is_active', true)
     .order('seiban')
 
-  if (!isMissingSeibanActiveColumn(result.error)) return result
+  if (!isMissingSeibanMetadataColumn(result.error)) return result
 
   return supabase
     .from('seiban_master')
@@ -528,72 +538,276 @@ async function fetchActiveSeibans() {
     .order('seiban')
 }
 
-function isMissingSeibanActiveColumn(error) {
+function isMissingSeibanMetadataColumn(error) {
   if (!error) return false
-  return error.code === '42703' || String(error.message || '').includes('is_active')
+  const message = String(error.message || '')
+  return error.code === '42703'
+    || message.includes('seiban_key')
+    || message.includes('customer_name')
+    || message.includes('status')
+    || message.includes('is_active')
 }
 
 async function findActiveSeibanByCode(seiban) {
+  const key = createProductionNumberKey(seiban)
   const result = await supabase
     .from('seiban_master')
-    .select('id, seiban, equipment_name, is_active')
-    .eq('seiban', seiban)
+    .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
+    .eq('seiban_key', key)
     .eq('is_active', true)
     .maybeSingle()
 
-  if (!isMissingSeibanActiveColumn(result.error)) return result
+  if (!isMissingSeibanMetadataColumn(result.error)) return result
 
   return supabase
     .from('seiban_master')
     .select('id, seiban, equipment_name')
-    .eq('seiban', seiban)
+    .eq('seiban', key)
     .maybeSingle()
 }
 
 async function insertActiveSeiban(payload) {
+  const normalizedSeiban = normalizeProductionNumber(payload.seiban)
+  const metadataPayload = {
+    ...payload,
+    seiban: normalizedSeiban,
+    seiban_key: createProductionNumberKey(normalizedSeiban),
+    is_active: true,
+    status: authContext.isWorker ? 'pending' : 'confirmed',
+    created_by: authContext.session.user.id,
+    confirmed_by: authContext.isAdmin ? authContext.session.user.id : null,
+    confirmed_at: authContext.isAdmin ? new Date().toISOString() : null
+  }
+
   const result = await supabase
     .from('seiban_master')
-    .insert({ ...payload, is_active: true })
+    .insert(metadataPayload)
     .select()
     .single()
 
-  if (!isMissingSeibanActiveColumn(result.error)) return result
+  if (!isMissingSeibanMetadataColumn(result.error)) return result
 
-  return supabase
-    .from('seiban_master')
-    .insert(payload)
-    .select()
-    .single()
+  return {
+    data: null,
+    error: result.error || new Error('生産番号の仮登録にはSUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sqlの実行が必要です')
+  }
 }
 
 window.searchEditSeiban = async function() {
-  const seiban = document.getElementById('edit_seiban').value.trim()
+  const seiban = normalizeProductionNumber(document.getElementById('edit_seiban').value)
   const equipmentInput = document.getElementById('edit_equipment_name')
   const statusEl = document.getElementById('edit_seiban_status')
+  const searchSeq = ++editSeibanSearchSeq
+  selectedEditSeiban = null
 
   if (!seiban) {
     equipmentInput.value = ''
     equipmentInput.readOnly = false
     statusEl.textContent = ''
+    renderEditSeibanCandidates([])
+    setEditRegisterSeibanVisible(false)
     return
   }
 
-  const { data, error } = await findActiveSeibanByCode(seiban)
+  const { data, error } = await fetchEditSeibanCandidates(seiban)
+  if (searchSeq !== editSeibanSearchSeq) return
 
-  if (data) {
-    equipmentInput.value = data.equipment_name
-    equipmentInput.readOnly = true
-    statusEl.textContent = '登録済み'
-    statusEl.style.color = 'green'
-  } else if (error) {
+  if (error) {
     console.error('製番の確認に失敗しました', error)
     statusEl.textContent = '製番の確認に失敗しました'
     statusEl.style.color = '#e74c3c'
+    renderEditSeibanCandidates([])
+    setEditRegisterSeibanVisible(false)
+    return
+  }
+
+  const exact = findExactSeiban(data, seiban)
+  if (exact) {
+    selectEditSeiban(exact)
+    equipmentInput.readOnly = true
+    statusEl.textContent = exact.status === 'pending' ? '未確認の登録済み生産番号です' : '登録済み'
+    statusEl.style.color = 'green'
+    renderEditSeibanCandidates(data, exact.id)
+    setEditRegisterSeibanVisible(false)
   } else {
     equipmentInput.value = ''
     equipmentInput.readOnly = false
-    statusEl.textContent = '未登録の製番です。設備名を入力してください'
+    statusEl.textContent = data.length > 0
+      ? '似た生産番号があります。候補を確認してください'
+      : '未登録の生産番号です。設備名を入力してください'
     statusEl.style.color = '#e74c3c'
+    renderEditSeibanCandidates(data)
+    setEditRegisterSeibanVisible(true)
+  }
+}
+
+async function fetchEditSeibanCandidates(seiban) {
+  const key = createProductionNumberKey(seiban)
+  const result = await supabase
+    .from('seiban_master')
+    .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
+    .order('seiban')
+    .limit(300)
+
+  if (result.error && isMissingSeibanMetadataColumn(result.error)) {
+    const fallback = await supabase
+      .from('seiban_master')
+      .select('id, seiban, equipment_name, is_active')
+      .order('seiban')
+      .limit(300)
+    if (fallback.error || !fallback.data) return fallback
+    return { data: filterSeibanCandidates(fallback.data, key), error: null }
+  }
+
+  if (result.error || !result.data) return result
+  return { data: filterSeibanCandidates(result.data, key), error: null }
+}
+
+function filterSeibanCandidates(rows, key) {
+  return rows
+    .filter(row => row.is_active !== false)
+    .map(row => ({ ...row, seiban_key: getProductionNumberKey(row) }))
+    .filter(row => (
+      row.seiban_key === key
+      || row.seiban_key.includes(key)
+      || key.includes(row.seiban_key)
+      || isSimilarProductionNumber(key, row.seiban_key)
+    ))
+    .slice(0, 8)
+}
+
+function findExactSeiban(rows, seiban) {
+  const key = createProductionNumberKey(seiban)
+  return rows.find(row => getProductionNumberKey(row) === key) || null
+}
+
+function selectEditSeiban(row) {
+  selectedEditSeiban = row
+  document.getElementById('edit_seiban').value = normalizeProductionNumber(row.seiban)
+  document.getElementById('edit_equipment_name').value = row.equipment_name || ''
+}
+
+function renderEditSeibanCandidates(rows, selectedId = null) {
+  const container = document.getElementById('edit_seiban_suggestions')
+  if (!container) return
+  container.innerHTML = ''
+
+  if (!rows || rows.length === 0) {
+    const empty = document.createElement('div')
+    empty.className = 'seiban-suggestion-empty'
+    empty.textContent = '一致する登録済み生産番号はありません'
+    container.appendChild(empty)
+    return
+  }
+
+  rows.forEach(row => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = `seiban-suggestion${row.id === selectedId ? ' is-selected' : ''}`
+    button.textContent = formatProductionNumberLabel(row)
+    button.addEventListener('click', () => {
+      selectEditSeiban(row)
+      document.getElementById('edit_equipment_name').readOnly = true
+      document.getElementById('edit_seiban_status').textContent = row.status === 'pending'
+        ? '未確認の登録済み生産番号です'
+        : '登録済み'
+      document.getElementById('edit_seiban_status').style.color = 'green'
+      setEditRegisterSeibanVisible(false)
+      renderEditSeibanCandidates(rows, row.id)
+    })
+    container.appendChild(button)
+  })
+}
+
+function setEditRegisterSeibanVisible(visible) {
+  const button = document.getElementById('edit_register_seiban_button')
+  if (!button) return
+  button.hidden = !visible
+  button.disabled = isRegisteringEditSeiban
+}
+
+async function registerEditSeibanFromInput() {
+  if (isRegisteringEditSeiban) return
+
+  const seiban = normalizeProductionNumber(document.getElementById('edit_seiban').value)
+  const equipmentName = document.getElementById('edit_equipment_name').value.trim()
+
+  if (!seiban) {
+    showMessage('⚠️ 生産番号を入力してください', 'error')
+    return
+  }
+
+  if (!equipmentName) {
+    showMessage('⚠️ 新しい生産番号の設備名を入力してください', 'error')
+    return
+  }
+
+  isRegisteringEditSeiban = true
+  setEditRegisterSeibanVisible(true)
+
+  try {
+    const { data: candidates, error } = await fetchEditSeibanCandidates(seiban)
+    if (error) {
+      console.error('生産番号の確認に失敗しました', error)
+      showMessage('❌ 生産番号の確認に失敗しました', 'error')
+      return
+    }
+
+    const exact = findExactSeiban(candidates || [], seiban)
+    if (exact) {
+      selectEditSeiban(exact)
+      showMessage('✅ 同じ生産番号が登録済みだったため、既存の生産番号を選択しました', 'success')
+      setEditRegisterSeibanVisible(false)
+      return
+    }
+
+    const similarText = (candidates || []).length
+      ? `\n\n似た生産番号:\n${candidates.map(row => `・${formatProductionNumberLabel(row)}`).join('\n')}`
+      : ''
+    const ok = confirm([
+      '新しい生産番号として登録しますか？',
+      `生産番号：${seiban}`,
+      '似た生産番号が登録されていないか、もう一度確認してください。',
+      similarText
+    ].filter(Boolean).join('\n'))
+
+    if (!ok) {
+      showMessage('⚠️ 生産番号の登録を中止しました', 'error')
+      return
+    }
+
+    const { data: newSeiban, error: insertError } = await insertActiveSeiban({
+      seiban,
+      equipment_name: equipmentName
+    })
+
+    if (insertError || !newSeiban) {
+      if (insertError?.code === '23505') {
+        const { data: existing } = await findActiveSeibanByCode(seiban)
+        if (existing) {
+          selectEditSeiban(existing)
+          showMessage('✅ 同じ生産番号が登録済みだったため、既存の生産番号を選択しました', 'success')
+          return
+        }
+      }
+
+      console.error('生産番号の登録に失敗しました', insertError)
+      showMessage('❌ 生産番号の登録に失敗しました。DB設定または通信状態を確認してください', 'error')
+      return
+    }
+
+    selectEditSeiban(newSeiban)
+    document.getElementById('edit_equipment_name').readOnly = true
+    document.getElementById('edit_seiban_status').textContent = authContext.isWorker
+      ? '未確認の生産番号として登録しました'
+      : '確認済み生産番号として登録しました'
+    document.getElementById('edit_seiban_status').style.color = 'green'
+    setEditRegisterSeibanVisible(false)
+    showMessage('✅ 生産番号を登録しました。このまま履歴を更新できます', 'success')
+  } finally {
+    isRegisteringEditSeiban = false
+    const button = document.getElementById('edit_register_seiban_button')
+    if (button) button.disabled = false
   }
 }
 
@@ -642,7 +856,7 @@ async function updateLogOnce() {
   if (!editingLog) return
 
   const workDate = document.getElementById('edit_work_date').value
-  const seiban = document.getElementById('edit_seiban').value.trim()
+  const seiban = normalizeProductionNumber(document.getElementById('edit_seiban').value)
   const equipmentName = document.getElementById('edit_equipment_name').value.trim()
   const workTypeId = document.getElementById('edit_work_type').value
   const startTime = document.getElementById('edit_start_time').value
@@ -822,15 +1036,8 @@ async function findOrCreateSeiban(seiban, equipmentName) {
 
   if (existing) return existing.id
 
-  const { data: newSeiban, error: insertError } = await insertActiveSeiban({ seiban, equipment_name: equipmentName })
-
-  if (insertError || !newSeiban) {
-    console.error('製番の登録に失敗しました', insertError)
-    showMessage('❌ 製番の登録に失敗しました', 'error')
-    return null
-  }
-
-  return newSeiban.id
+  showMessage('⚠️ 未登録の生産番号です。候補を確認し、「新しい生産番号として登録」を押してから更新してください', 'error')
+  return null
 }
 
 async function findApplicableRate({ billingCompanyId, workerId, seibanId, rateType, actualMinutes }) {
@@ -880,6 +1087,11 @@ document.getElementById('edit_start_time').addEventListener('input', calcEditAct
 document.getElementById('edit_end_time').addEventListener('input', calcEditActualTime)
 document.getElementById('edit_break1').addEventListener('input', calcEditActualTime)
 document.getElementById('edit_break2').addEventListener('input', calcEditActualTime)
+document.getElementById('edit_seiban').addEventListener('blur', () => {
+  const input = document.getElementById('edit_seiban')
+  input.value = normalizeProductionNumber(input.value)
+})
+document.getElementById('edit_register_seiban_button')?.addEventListener('click', registerEditSeibanFromInput)
 await loadWorkTypes()
 await loadWorkers()
 await checkRateFeature()

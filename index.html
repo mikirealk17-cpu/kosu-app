@@ -49,6 +49,10 @@
         <label>製番</label>
         <input type="text" id="seiban" maxlength="100" placeholder="例: A001" oninput="searchSeiban()">
         <span id="seiban_status"></span>
+        <div id="seiban_suggestions" class="seiban-suggestions" aria-label="製番候補"></div>
+        <button type="button" id="register_seiban_button" class="secondary-btn register-seiban-btn" hidden>
+          新しい生産番号として登録
+        </button>
       </div>
 
       <div class="form-group">
