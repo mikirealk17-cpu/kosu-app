@@ -292,7 +292,7 @@ async function toggleSeibanVisibility(seiban) {
 
   if (error) {
     console.error(`製番の${action}に失敗しました`, error)
-    if (isMissingColumnError(error)) {
+    if (isMissingMetadataColumnError(error)) {
       showMessage('❌ 非表示機能を使うには、先にSUPABASE_SEIBAN_ACTIVE_SETUP.sqlを実行してください', 'error')
       return
     }
