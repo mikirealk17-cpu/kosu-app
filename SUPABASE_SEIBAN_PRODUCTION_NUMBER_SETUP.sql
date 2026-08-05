@@ -1,5 +1,5 @@
 -- 生産番号（既存名: 製番）検索・仮登録用の追加SQLです。
--- 本番実行前に、必ず下の「正規化後に重複する既存製番の確認」を先に実行してください。
+-- 本番実行前に、必ず SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql を先に実行してください。
 -- 重複が出た場合は、このSQLで自動削除・自動統合せず、一覧を確認してから手動で統合してください。
 
 create or replace function public.normalize_seiban_key(value text)

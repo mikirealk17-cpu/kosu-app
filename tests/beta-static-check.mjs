@@ -22,7 +22,8 @@ const files = await Promise.all([
   'SUPABASE_BETA_AUDIT_SETUP.sql',
   'SUPABASE_BETA_VALIDATION_SETUP.sql',
   'SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql',
-  'SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'
+  'SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql',
+  'SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'
 ].map(async path => [path, await readFile(new URL(`../${path}`, import.meta.url), 'utf8')]))
 
 const source = Object.fromEntries(files)
@@ -50,6 +51,8 @@ assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /seiban_mast
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /merge_pending_seiban/i)
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql'], /duplicate_count/i)
 assert.doesNotMatch(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql'], /\b(update|delete|insert|alter|create)\b/i)
+assert.match(source['SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'], /empty_key_rows/)
+assert.match(source['SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'], /SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP\.sql/)
 
 const browserSource = Object.entries(source)
   .filter(([path]) => path.endsWith('.js'))
