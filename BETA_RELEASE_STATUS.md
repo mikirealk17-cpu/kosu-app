@@ -33,11 +33,13 @@
 - ローカルコミットを作成。GitHub pushは認証情報未設定で未完了。
 - 生産番号の正規化共通関数、作業者による候補検索・仮登録、管理者の未確認確認・統合導線を元リポジトリへ反映。
 - `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を追加。`seiban_key` UNIQUE制約、`pending/confirmed`、登録者・確認者、統合RPCを含む。
+- DB変更前に実行する読み取り専用の `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を追加。
 
 ## 公開前必須
 
 - [ ] ローカルコミットを `origin/main` へpushし、Vercelへデプロイする。
 - [ ] デプロイ前に `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` の重複確認クエリを実行し、重複0件を確認してから本番へ適用する。
+- [ ] 先に `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を実行し、空キー0件・重複0件を確認する。
 - [ ] 生産番号の表記揺れ、作業者仮登録、管理者確認、統合を本番DB適用後に確認する。
 - [ ] デプロイ後、管理者・作業者の両方で保存、編集、権限制御を再確認する。
 - [ ] DBバックアップ取得後、`SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認してから本番へ適用する。

@@ -75,6 +75,7 @@
 - [実装完了] ログイン後redirectを同一オリジンの許可画面だけに制限した
 - [未適用] `SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認し、バックアップ後に本番へ適用する
 - [未適用] `SUPABASE_BETA_VALIDATION_SETUP.sql` をテスト環境で確認し、既存データの違反0件を確認後に本番へ適用する
+- [未確認] `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を実行し、正規化後の空キー0件・重複0件を確認する
 - [未適用] `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` の重複確認クエリを実行し、重複0件を確認してから本番へ適用する
 - [実装完了・未デプロイ] 生産番号の正規化、候補検索、作業者の仮登録、管理者の確認済み更新、未確認番号の統合導線を追加した
 - [未確認] 表記揺れ `ab-123` / `AB-123` / `ＡＢ－１２３` / ` AB-123 ` / `AB－123` が同じ生産番号として扱われることを本番DB適用後に確認する

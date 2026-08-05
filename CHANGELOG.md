@@ -7,6 +7,7 @@
 - 未登録生産番号を保存・更新時に自動作成せず、明示的な登録ボタン経由に変更
 - 製番管理画面に未確認生産番号の表示、確認済み更新、既存番号への統合導線を追加
 - `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を追加し、正規化キー、UNIQUE制約、pending/confirmed、登録者・確認者、統合RPC、RLS更新を用意
+- DB変更前に正規化後の空キー・重複を確認する `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を追加
 - 生産番号の正規化・類似判定を静的テストに追加
 
 ## 2026-08-03
