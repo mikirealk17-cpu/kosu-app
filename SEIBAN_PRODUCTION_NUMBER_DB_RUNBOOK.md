@@ -53,6 +53,11 @@ SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql
 - 管理者だけが確認済み化・編集・削除・統合できるようにする
 - `merge_pending_seiban` RPCを追加
 
+安全対策:
+
+- SQL全体をトランザクションで実行します。
+- 読み取り専用チェックを飛ばして実行した場合でも、空キー・重複があればスキーマ変更前に停止します。
+
 ### 4. 適用後チェック
 
 SQL適用後、Supabase SQL Editorで以下を確認します。

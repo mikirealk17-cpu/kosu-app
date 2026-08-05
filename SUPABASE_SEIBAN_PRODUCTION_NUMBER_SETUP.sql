@@ -2,6 +2,8 @@
 -- 本番実行前に、必ず SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql を先に実行してください。
 -- 重複が出た場合は、このSQLで自動削除・自動統合せず、一覧を確認してから手動で統合してください。
 
+begin;
+
 create or replace function public.normalize_seiban_key(value text)
 returns text
 language plpgsql
@@ -37,6 +39,29 @@ group by public.normalize_seiban_key(seiban)
 having public.normalize_seiban_key(seiban) <> ''
    and count(*) > 1
 order by seiban_key;
+
+-- 確認SQLを飛ばして実行した場合でも、スキーマ変更前に止めます。
+do $$
+begin
+  if exists (
+    select 1
+    from public.seiban_master
+    where public.normalize_seiban_key(seiban) = ''
+  ) then
+    raise exception 'seiban_master contains empty normalized seiban_key. Run SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql and fix the source rows first.';
+  end if;
+
+  if exists (
+    select 1
+    from public.seiban_master
+    group by public.normalize_seiban_key(seiban)
+    having public.normalize_seiban_key(seiban) <> ''
+       and count(*) > 1
+  ) then
+    raise exception 'seiban_master contains duplicate normalized seiban_key values. Run SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql and merge manually before applying this setup.';
+  end if;
+end
+$$;
 
 alter table public.seiban_master
   add column if not exists seiban_key text;
@@ -186,5 +211,7 @@ on public.seiban_master
 for delete
 to authenticated
 using (public.is_system_admin());
+
+commit;
 
 notify pgrst, 'reload schema';
