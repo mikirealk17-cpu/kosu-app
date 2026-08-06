@@ -23,6 +23,7 @@ const files = await Promise.all([
   'seibans.js',
   'index.html',
   'logs.html',
+  'style.css',
   'supabaseClient.js',
   'SUPABASE_AUTH_RLS_POLICIES.sql',
   'SUPABASE_BETA_AUDIT_SETUP.sql',
@@ -36,6 +37,10 @@ const files = await Promise.all([
 const source = Object.fromEntries(files)
 
 assert.match(source['index.html'], /id="save_button"/)
+assert.match(source['index.html'], /＋ 未登録の生産番号を新しく登録する/)
+assert.match(source['logs.html'], /＋ 未登録の生産番号を新しく登録する/)
+assert.match(source['style.css'], /\.register-seiban-btn[\s\S]*min-height: 54px/)
+assert.match(source['style.css'], /\.register-seiban-btn[\s\S]*box-shadow/)
 assert.match(source['app.js'], /if \(isSaving\) return/)
 assert.match(source['app.js'], /hasDuplicate === null/)
 assert.match(source['logs.html'], /id="update_button"/)
