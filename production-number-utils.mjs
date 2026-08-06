@@ -3,6 +3,7 @@ const SPACE_PATTERN = /[\s\u3000]+/g
 const RECENT_PRODUCTION_NUMBER_STORAGE_KEY = 'kosu_recent_seiban_keys_v1'
 
 export const PRODUCTION_NUMBER_CANDIDATE_LIMIT = 8
+export const RECENT_PRODUCTION_NUMBER_LIMIT = 5
 
 export function normalizeProductionNumber(value) {
   return String(value || '')
@@ -79,12 +80,20 @@ export function sortProductionNumberCandidatesByRecent(rows, recentKeys = getRec
   })
 }
 
+export function filterRecentProductionNumberCandidates(rows, recentKeys = getRecentProductionNumberKeys()) {
+  const rowByKey = new Map(rows.map(row => [getProductionNumberKey(row), row]))
+  return recentKeys
+    .map(key => rowByKey.get(key))
+    .filter(Boolean)
+    .slice(0, RECENT_PRODUCTION_NUMBER_LIMIT)
+}
+
 export function getRecentProductionNumberKeys(storage = getBrowserStorage()) {
   if (!storage) return []
 
   try {
     const parsed = JSON.parse(storage.getItem(RECENT_PRODUCTION_NUMBER_STORAGE_KEY) || '[]')
-    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, PRODUCTION_NUMBER_CANDIDATE_LIMIT) : []
+    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, RECENT_PRODUCTION_NUMBER_LIMIT) : []
   } catch {
     return []
   }
@@ -98,7 +107,7 @@ export function rememberRecentProductionNumber(row, storage = getBrowserStorage(
 
   try {
     const keys = [key, ...getRecentProductionNumberKeys(storage).filter(item => item !== key)]
-      .slice(0, PRODUCTION_NUMBER_CANDIDATE_LIMIT)
+      .slice(0, RECENT_PRODUCTION_NUMBER_LIMIT)
     storage.setItem(RECENT_PRODUCTION_NUMBER_STORAGE_KEY, JSON.stringify(keys))
   } catch {
     // localStorage が使えない環境では、候補表示だけ継続します。

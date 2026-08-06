@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { getSafeLocalRedirect } from '../login-redirect.mjs'
 import {
+  filterRecentProductionNumberCandidates,
   getRecentProductionNumberKeys,
   isSimilarProductionNumber,
   normalizeProductionNumber,
@@ -117,7 +118,10 @@ assert.equal(isSimilarProductionNumber('AB-123', 'AB-124'), true)
 assert.equal(isSimilarProductionNumber('AB-123', 'XY-999'), false)
 assert.match(source['production-number-utils.mjs'], /rememberRecentProductionNumber/)
 assert.match(source['production-number-utils.mjs'], /sortProductionNumberCandidatesByRecent/)
+assert.match(source['production-number-utils.mjs'], /filterRecentProductionNumberCandidates/)
 assert.match(source['production-number-utils.mjs'], /kosu_recent_seiban_keys_v1/)
+assert.match(source['app.js'], /最近使った生産番号はまだありません。文字を入力して検索してください/)
+assert.match(source['logs.js'], /最近使った生産番号はまだありません。文字を入力して検索してください/)
 
 const fakeStorage = createFakeStorage()
 rememberRecentProductionNumber({ seiban: 'AB-123', seiban_key: 'AB-123' }, fakeStorage)
@@ -131,6 +135,13 @@ const sortedCandidates = sortProductionNumberCandidatesByRecent([
   { seiban: 'AB-123', seiban_key: 'AB-123' }
 ], getRecentProductionNumberKeys(fakeStorage))
 assert.deepEqual(sortedCandidates.map(row => row.seiban), ['AB-123', 'CD-456', 'ZZ-999'])
+
+const recentOnlyCandidates = filterRecentProductionNumberCandidates([
+  { seiban: 'ZZ-999', seiban_key: 'ZZ-999' },
+  { seiban: 'CD-456', seiban_key: 'CD-456' },
+  { seiban: 'AB-123', seiban_key: 'AB-123' }
+], getRecentProductionNumberKeys(fakeStorage))
+assert.deepEqual(recentOnlyCandidates.map(row => row.seiban), ['AB-123', 'CD-456'])
 
 console.log('β版の静的安全チェック: OK')
 

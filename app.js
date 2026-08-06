@@ -8,13 +8,13 @@ import {
 import { hasTimeOverlap } from './time-rules.mjs'
 import {
   createProductionNumberKey,
+  filterRecentProductionNumberCandidates,
   formatProductionNumberLabel,
   getProductionNumberKey,
   isSimilarProductionNumber,
   normalizeProductionNumber,
   PRODUCTION_NUMBER_CANDIDATE_LIMIT,
   rememberRecentProductionNumber,
-  sortProductionNumberCandidatesByRecent,
   compareProductionNumberCandidates
 } from './production-number-utils.mjs'
 
@@ -154,7 +154,7 @@ async function showDefaultSeibanCandidates(searchSeq = ++seibanSearchSeq) {
     return
   }
 
-  renderSeibanCandidates(data, null, '登録済みの製番候補はありません')
+  renderSeibanCandidates(data, null, '最近使った生産番号はまだありません。文字を入力して検索してください')
 }
 
 async function fetchSeibanCandidates(seiban, options = {}) {
@@ -185,7 +185,7 @@ function filterSeibanCandidates(rows, key, options = {}) {
     .map(row => ({ ...row, seiban_key: getProductionNumberKey(row) }))
 
   if (!key && options.allowEmpty) {
-    return sortProductionNumberCandidatesByRecent(activeRows).slice(0, PRODUCTION_NUMBER_CANDIDATE_LIMIT)
+    return filterRecentProductionNumberCandidates(activeRows)
   }
 
   return activeRows
