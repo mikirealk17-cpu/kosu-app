@@ -11,7 +11,11 @@ import {
   formatProductionNumberLabel,
   getProductionNumberKey,
   isSimilarProductionNumber,
-  normalizeProductionNumber
+  normalizeProductionNumber,
+  PRODUCTION_NUMBER_CANDIDATE_LIMIT,
+  rememberRecentProductionNumber,
+  sortProductionNumberCandidatesByRecent,
+  compareProductionNumberCandidates
 } from './production-number-utils.mjs'
 
 const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
@@ -349,6 +353,9 @@ function startEdit(id) {
 
 window.cancelEdit = function() {
   editingLog = null
+  selectedEditSeiban = null
+  clearEditSeibanCandidates()
+  setEditRegisterSeibanVisible(false)
   document.getElementById('edit_panel').classList.remove('active')
 }
 
@@ -603,8 +610,9 @@ window.searchEditSeiban = async function() {
   if (!seiban) {
     equipmentInput.value = ''
     equipmentInput.readOnly = false
-    statusEl.textContent = ''
-    renderEditSeibanCandidates([])
+    statusEl.textContent = '候補から選ぶと入力ミスを防げます'
+    statusEl.style.color = '#667085'
+    await showDefaultEditSeibanCandidates(searchSeq)
     setEditRegisterSeibanVisible(false)
     return
   }
@@ -641,7 +649,22 @@ window.searchEditSeiban = async function() {
   }
 }
 
-async function fetchEditSeibanCandidates(seiban) {
+async function showDefaultEditSeibanCandidates(searchSeq = ++editSeibanSearchSeq) {
+  if (normalizeProductionNumber(document.getElementById('edit_seiban').value)) return
+
+  const { data, error } = await fetchEditSeibanCandidates('', { allowEmpty: true })
+  if (searchSeq !== editSeibanSearchSeq) return
+
+  if (error) {
+    console.error('製番候補の取得に失敗しました', error)
+    renderEditSeibanCandidates([], null, '製番候補を読み込めませんでした')
+    return
+  }
+
+  renderEditSeibanCandidates(data, null, '登録済みの製番候補はありません')
+}
+
+async function fetchEditSeibanCandidates(seiban, options = {}) {
   const key = createProductionNumberKey(seiban)
   const result = await supabase
     .from('seiban_master')
@@ -656,24 +679,31 @@ async function fetchEditSeibanCandidates(seiban) {
       .order('seiban')
       .limit(300)
     if (fallback.error || !fallback.data) return fallback
-    return { data: filterSeibanCandidates(fallback.data, key), error: null }
+    return { data: filterSeibanCandidates(fallback.data, key, options), error: null }
   }
 
   if (result.error || !result.data) return result
-  return { data: filterSeibanCandidates(result.data, key), error: null }
+  return { data: filterSeibanCandidates(result.data, key, options), error: null }
 }
 
-function filterSeibanCandidates(rows, key) {
-  return rows
+function filterSeibanCandidates(rows, key, options = {}) {
+  const activeRows = rows
     .filter(row => row.is_active !== false)
     .map(row => ({ ...row, seiban_key: getProductionNumberKey(row) }))
+
+  if (!key && options.allowEmpty) {
+    return sortProductionNumberCandidatesByRecent(activeRows).slice(0, PRODUCTION_NUMBER_CANDIDATE_LIMIT)
+  }
+
+  return activeRows
     .filter(row => (
       row.seiban_key === key
       || row.seiban_key.includes(key)
       || key.includes(row.seiban_key)
       || isSimilarProductionNumber(key, row.seiban_key)
     ))
-    .slice(0, 8)
+    .sort((a, b) => compareProductionNumberCandidates(a, b))
+    .slice(0, PRODUCTION_NUMBER_CANDIDATE_LIMIT)
 }
 
 function findExactSeiban(rows, seiban) {
@@ -683,11 +713,12 @@ function findExactSeiban(rows, seiban) {
 
 function selectEditSeiban(row) {
   selectedEditSeiban = row
+  rememberRecentProductionNumber(row)
   document.getElementById('edit_seiban').value = normalizeProductionNumber(row.seiban)
   document.getElementById('edit_equipment_name').value = row.equipment_name || ''
 }
 
-function renderEditSeibanCandidates(rows, selectedId = null) {
+function renderEditSeibanCandidates(rows, selectedId = null, emptyText = '一致する登録済み生産番号はありません') {
   const container = document.getElementById('edit_seiban_suggestions')
   if (!container) return
   container.innerHTML = ''
@@ -695,7 +726,7 @@ function renderEditSeibanCandidates(rows, selectedId = null) {
   if (!rows || rows.length === 0) {
     const empty = document.createElement('div')
     empty.className = 'seiban-suggestion-empty'
-    empty.textContent = '一致する登録済み生産番号はありません'
+    empty.textContent = emptyText
     container.appendChild(empty)
     return
   }
@@ -717,6 +748,11 @@ function renderEditSeibanCandidates(rows, selectedId = null) {
     })
     container.appendChild(button)
   })
+}
+
+function clearEditSeibanCandidates() {
+  const container = document.getElementById('edit_seiban_suggestions')
+  if (container) container.innerHTML = ''
 }
 
 function setEditRegisterSeibanVisible(visible) {
@@ -1090,6 +1126,13 @@ document.getElementById('edit_break2').addEventListener('input', calcEditActualT
 document.getElementById('edit_seiban').addEventListener('blur', () => {
   const input = document.getElementById('edit_seiban')
   input.value = normalizeProductionNumber(input.value)
+})
+document.getElementById('edit_seiban').addEventListener('focus', () => {
+  if (!normalizeProductionNumber(document.getElementById('edit_seiban').value)) {
+    document.getElementById('edit_seiban_status').textContent = '候補から選ぶと入力ミスを防げます'
+    document.getElementById('edit_seiban_status').style.color = '#667085'
+    showDefaultEditSeibanCandidates()
+  }
 })
 document.getElementById('edit_register_seiban_button')?.addEventListener('click', registerEditSeibanFromInput)
 await loadWorkTypes()

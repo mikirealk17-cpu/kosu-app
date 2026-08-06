@@ -2,8 +2,11 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { getSafeLocalRedirect } from '../login-redirect.mjs'
 import {
+  getRecentProductionNumberKeys,
   isSimilarProductionNumber,
-  normalizeProductionNumber
+  normalizeProductionNumber,
+  rememberRecentProductionNumber,
+  sortProductionNumberCandidatesByRecent
 } from '../production-number-utils.mjs'
 import { hasTimeOverlap } from '../time-rules.mjs'
 
@@ -43,7 +46,9 @@ assert.match(source['summary.js'], /exportRows\.rows\.length === 0/)
 assert.match(source['summary.js'], /const refreshed = await window\.loadData\(\)/)
 assert.match(source['summary.js'], /getDisplayedRowsForExport/)
 assert.match(source['app.js'], /normalizeProductionNumber/)
+assert.match(source['app.js'], /showDefaultSeibanCandidates/)
 assert.match(source['logs.js'], /registerEditSeibanFromInput/)
+assert.match(source['logs.js'], /showDefaultEditSeibanCandidates/)
 assert.match(source['seibans.js'], /merge_pending_seiban/)
 assert.match(source['SUPABASE_BETA_AUDIT_SETUP.sql'], /create table if not exists public\.audit_log/i)
 assert.match(source['SUPABASE_BETA_AUDIT_SETUP.sql'], /old_data jsonb/i)
@@ -103,5 +108,33 @@ assert.equal(normalizeProductionNumber('AB－123'), 'AB-123')
 assert.equal(isSimilarProductionNumber('AB-123', 'AB123'), true)
 assert.equal(isSimilarProductionNumber('AB-123', 'AB-124'), true)
 assert.equal(isSimilarProductionNumber('AB-123', 'XY-999'), false)
+assert.match(source['production-number-utils.mjs'], /rememberRecentProductionNumber/)
+assert.match(source['production-number-utils.mjs'], /sortProductionNumberCandidatesByRecent/)
+assert.match(source['production-number-utils.mjs'], /kosu_recent_seiban_keys_v1/)
+
+const fakeStorage = createFakeStorage()
+rememberRecentProductionNumber({ seiban: 'AB-123', seiban_key: 'AB-123' }, fakeStorage)
+rememberRecentProductionNumber({ seiban: 'CD-456', seiban_key: 'CD-456' }, fakeStorage)
+rememberRecentProductionNumber({ seiban: 'AB-123', seiban_key: 'AB-123' }, fakeStorage)
+assert.deepEqual(getRecentProductionNumberKeys(fakeStorage), ['AB-123', 'CD-456'])
+
+const sortedCandidates = sortProductionNumberCandidatesByRecent([
+  { seiban: 'ZZ-999', seiban_key: 'ZZ-999' },
+  { seiban: 'CD-456', seiban_key: 'CD-456' },
+  { seiban: 'AB-123', seiban_key: 'AB-123' }
+], getRecentProductionNumberKeys(fakeStorage))
+assert.deepEqual(sortedCandidates.map(row => row.seiban), ['AB-123', 'CD-456', 'ZZ-999'])
 
 console.log('β版の静的安全チェック: OK')
+
+function createFakeStorage() {
+  const values = new Map()
+  return {
+    getItem(key) {
+      return values.has(key) ? values.get(key) : null
+    },
+    setItem(key, value) {
+      values.set(key, String(value))
+    }
+  }
+}
