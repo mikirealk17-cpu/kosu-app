@@ -12,6 +12,7 @@ import { hasTimeOverlap } from '../time-rules.mjs'
 
 const files = await Promise.all([
   'app.js',
+  'auth.js',
   'logs.js',
   'login.js',
   'login-redirect.mjs',
@@ -41,6 +42,7 @@ assert.match(source['logs.js'], /if \(isUpdating\) return/)
 assert.match(source['logs.js'], /hasOverlappingTimeLog/)
 assert.match(source['logs.js'], /\.neq\('id', excludedId\)/)
 assert.match(source['login.js'], /getSafeLocalRedirect/)
+assert.match(source['login.js'], /\['index\.html', 'logs\.html', 'summary\.html'\]/)
 assert.match(source['login-redirect.mjs'], /candidate\.origin !== current\.origin/)
 assert.match(source['summary.js'], /exportRows\.rows\.length === 0/)
 assert.match(source['summary.js'], /const refreshed = await window\.loadData\(\)/)
@@ -50,6 +52,11 @@ assert.match(source['app.js'], /showDefaultSeibanCandidates/)
 assert.match(source['logs.js'], /registerEditSeibanFromInput/)
 assert.match(source['logs.js'], /showDefaultEditSeibanCandidates/)
 assert.match(source['seibans.js'], /merge_pending_seiban/)
+assert.match(source['auth.js'], /const WORKER_BLOCKED_HREFS = \[/)
+assert.doesNotMatch(source['auth.js'], /WORKER_BLOCKED_HREFS = \[[\s\S]*?'summary\.html'[\s\S]*?\]/)
+assert.match(source['summary.js'], /requireAuth\(\[ROLES\.ADMIN, ROLES\.WORKER\]\)/)
+assert.match(source['summary.js'], /authContext\.isWorker[\s\S]*authContext\.profile\.worker_id/)
+assert.match(source['summary.js'], /select\.disabled = authContext\.isWorker/)
 assert.match(source['SUPABASE_BETA_AUDIT_SETUP.sql'], /create table if not exists public\.audit_log/i)
 assert.match(source['SUPABASE_BETA_AUDIT_SETUP.sql'], /old_data jsonb/i)
 assert.match(source['SUPABASE_BETA_VALIDATION_SETUP.sql'], /work_logs_actual_minutes_beta/i)

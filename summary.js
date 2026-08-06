@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient.js'
 import { requireAuth, ROLES } from './auth.js'
 import { getRateTypeLabel, isContractRate } from './rate-utils.js'
 
-await requireAuth([ROLES.ADMIN])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
 const BILLING_COMPANY_CSV_ENABLED = false
 
 let currentTab = 'seiban'
@@ -183,7 +183,9 @@ function setSummaryStatus(text) {
 
 function getFilters() {
   return {
-    workerId: document.getElementById('filter_worker').value,
+    workerId: authContext.isWorker
+      ? authContext.profile.worker_id
+      : document.getElementById('filter_worker').value,
     workTypeId: document.getElementById('filter_work_type').value,
     seibanId: document.getElementById('filter_seiban').value
   }
@@ -233,15 +235,32 @@ async function loadFilterOptions() {
 }
 
 async function loadWorkerOptions() {
-  const { data } = await supabase
+  let query = supabase
     .from('worker_master')
     .select('id, name')
     .eq('is_active', true)
     .order('sort_order')
 
+  if (authContext.isWorker) {
+    query = query.eq('id', authContext.profile.worker_id)
+  }
+
+  const { data } = await query
+
   const select = document.getElementById('filter_worker')
-  select.innerHTML = '<option value="">全作業者</option>'
-  if (!data) return
+  select.innerHTML = authContext.isWorker ? '' : '<option value="">全作業者</option>'
+  select.disabled = authContext.isWorker
+
+  if (!data || data.length === 0) {
+    if (authContext.isWorker) {
+      const option = document.createElement('option')
+      option.value = authContext.profile.worker_id
+      option.textContent = '自分の工数'
+      select.appendChild(option)
+      select.value = authContext.profile.worker_id
+    }
+    return
+  }
 
   data.forEach(worker => {
     const option = document.createElement('option')
@@ -249,6 +268,11 @@ async function loadWorkerOptions() {
     option.textContent = worker.name
     select.appendChild(option)
   })
+
+  if (authContext.isWorker) {
+    select.value = authContext.profile.worker_id
+    select.title = '作業者は自分の工数だけ集計できます'
+  }
 }
 
 async function loadWorkTypeOptions() {

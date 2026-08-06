@@ -60,7 +60,7 @@ async function routeLoggedInUser(authUserId) {
 function isRoleAllowedForPath(role, path) {
   const page = path.split('?')[0]
   if (role === ROLES.ADMIN) return ALLOWED_REDIRECT_PAGES.has(page)
-  const workerAllowed = ['index.html', 'logs.html']
+  const workerAllowed = ['index.html', 'logs.html', 'summary.html']
   return workerAllowed.includes(page)
 }
 

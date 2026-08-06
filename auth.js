@@ -7,7 +7,6 @@ export const ROLES = {
 
 const LOGIN_PAGE = 'login.html'
 const WORKER_BLOCKED_HREFS = [
-  'summary.html',
   'admin.html',
   'workers.html',
   'work-types.html',
