@@ -179,6 +179,12 @@ begin
 end;
 $$;
 
+-- RPCはログイン済みユーザーだけに公開します。
+-- merge_pending_seiban は security definer のため、関数内でも system_admin を必ず確認します。
+revoke all on function public.normalize_seiban_key(text) from public;
+revoke all on function public.normalize_seiban_key(text) from anon;
+revoke all on function public.merge_pending_seiban(uuid, uuid) from public;
+revoke all on function public.merge_pending_seiban(uuid, uuid) from anon;
 grant execute on function public.normalize_seiban_key(text) to authenticated;
 grant execute on function public.merge_pending_seiban(uuid, uuid) to authenticated;
 

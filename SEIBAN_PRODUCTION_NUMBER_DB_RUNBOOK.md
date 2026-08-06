@@ -63,11 +63,22 @@ SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql
 - 作業者は `pending` の仮登録だけ可能にするRLSへ更新
 - 管理者だけが確認済み化・編集・削除・統合できるようにする
 - `merge_pending_seiban` RPCを追加
+- RPC実行権限をログイン済みユーザーへ限定し、統合RPC内でも `system_admin` を確認する
 
 安全対策:
 
 - SQL全体をトランザクションで実行します。
 - 読み取り専用チェックを飛ばして実行した場合でも、空キー・重複があればスキーマ変更前に停止します。
+
+### 3.1. RLS再実行後の補強
+
+`SUPABASE_AUTH_RLS_POLICIES.sql` を後から再実行した場合は、続けて以下も実行してください。
+
+```text
+SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql
+```
+
+この補強SQLは、作業者の仮登録権限を `pending` のみに戻し、確認済み化・統合・削除を管理者だけに限定します。既存データは削除しません。
 
 ### 4. 適用後チェック
 

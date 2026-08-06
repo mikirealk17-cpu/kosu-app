@@ -19,10 +19,12 @@ const files = await Promise.all([
   'index.html',
   'logs.html',
   'supabaseClient.js',
+  'SUPABASE_AUTH_RLS_POLICIES.sql',
   'SUPABASE_BETA_AUDIT_SETUP.sql',
   'SUPABASE_BETA_VALIDATION_SETUP.sql',
   'SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql',
   'SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql',
+  'SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql',
   'SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'
 ].map(async path => [path, await readFile(new URL(`../${path}`, import.meta.url), 'utf8')]))
 
@@ -49,13 +51,21 @@ assert.match(source['SUPABASE_BETA_VALIDATION_SETUP.sql'], /work_logs_actual_min
 assert.match(source['SUPABASE_BETA_VALIDATION_SETUP.sql'], /not valid/i)
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /seiban_master_seiban_key_uidx/i)
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /merge_pending_seiban/i)
+assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /revoke all on function public\.merge_pending_seiban\(uuid, uuid\) from anon/i)
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /(^|\n)begin;\n/i)
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /(^|\n)commit;\n/i)
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /Run SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY\.sql/i)
+assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql'], /status = 'pending'/i)
+assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql'], /created_by = auth\.uid\(\)/i)
+assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql'], /only system_admin can merge seiban_master rows/i)
+assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql'], /revoke all on function public\.normalize_seiban_key\(text\) from anon/i)
+assert.match(source['SUPABASE_AUTH_RLS_POLICIES.sql'], /column_name in \('status', 'created_by', 'confirmed_by', 'confirmed_at'\)/i)
+assert.match(source['SUPABASE_AUTH_RLS_POLICIES.sql'], /status = 'pending'/i)
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql'], /duplicate_count/i)
 assert.doesNotMatch(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql'], /\b(update|delete|insert|alter|create)\b/i)
 assert.match(source['SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'], /empty_key_rows/)
 assert.match(source['SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'], /SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP\.sql/)
+assert.match(source['SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'], /SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN\.sql/)
 
 const browserSource = Object.entries(source)
   .filter(([path]) => path.endsWith('.js'))

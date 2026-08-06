@@ -211,11 +211,47 @@ to authenticated
 using (true);
 
 drop policy if exists "seiban_master_insert_authenticated" on public.seiban_master;
-create policy "seiban_master_insert_authenticated"
-on public.seiban_master
-for insert
-to authenticated
-with check (true);
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'seiban_master'
+      and column_name in ('status', 'created_by', 'confirmed_by', 'confirmed_at')
+    group by table_schema, table_name
+    having count(*) = 4
+  ) then
+    execute $policy$
+      create policy "seiban_master_insert_authenticated"
+      on public.seiban_master
+      for insert
+      to authenticated
+      with check (
+        public.is_system_admin()
+        or (
+          status = 'pending'
+          and created_by = auth.uid()
+          and confirmed_by is null
+          and confirmed_at is null
+        )
+      )
+    $policy$;
+  else
+    execute $policy$
+      create policy "seiban_master_insert_authenticated"
+      on public.seiban_master
+      for insert
+      to authenticated
+      with check (true)
+    $policy$;
+  end if;
+end
+$$;
+
+-- 生産番号の作業者仮登録機能を使う環境では、この基本RLSを再実行した後に
+-- SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql も再実行してください。
+-- これにより、作業者は pending の仮登録だけ可能、confirmed化・統合・削除は管理者だけになります。
 
 drop policy if exists "seiban_master_admin_update" on public.seiban_master;
 create policy "seiban_master_admin_update"

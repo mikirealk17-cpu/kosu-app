@@ -40,6 +40,7 @@
 - REST RPCで `normalize_seiban_key('ＡＢ－１２３')` が `AB-123` を返すことを確認。
 - 匿名RESTで `seiban_master` が読めないことを確認。
 - 本番工数入力画面で、生産番号検索UIと未登録時の仮登録ボタン表示を確認。
+- `SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql` を追加し、基本RLS再実行後でも生産番号仮登録権限が緩まない復旧手順を用意。
 
 ## 公開前必須
 
@@ -47,6 +48,7 @@
 - [x] 先に `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を実行し、空キー0件・重複0件を確認する。
 - [x] `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を本番へ適用する。
 - [ ] 生産番号の表記揺れ、作業者仮登録、管理者確認、統合を本番DB適用後に確認する。`CODEX-TEST-...` のテスト登録は確認ダイアログ後にブラウザ接続がタイムアウトした可能性があるため、管理画面の未確認一覧で継続確認する。
+- [ ] `SUPABASE_AUTH_RLS_POLICIES.sql` を再実行した場合は、続けて `SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql` を実行する。
 - [ ] デプロイ後、管理者・作業者の両方で保存、編集、権限制御を再確認する。
 - [ ] DBバックアップ取得後、`SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認してから本番へ適用する。
 - [ ] `SUPABASE_BETA_VALIDATION_SETUP.sql` をテスト環境で確認し、既存データ違反がないことを確認してから本番へ適用する。
