@@ -756,12 +756,13 @@ function createSeibanSummaryRows(data) {
 
 function createSeibanDetailRows(data) {
   return {
-    headers: ['日付', '製番', '設備名', '作業者', '実働時間'],
+    headers: ['日付', '製番', '設備名', '作業者', '作業内容', '実働時間'],
     rows: data.map(row => [
       row.work_date,
       row.seiban_master?.seiban || '',
       row.seiban_master?.equipment_name || '',
       workerNameMap[row.worker_id] || '',
+      row.work_type_master?.name || '',
       minutesToExportHours(row.actual_minutes)
     ])
   }
@@ -1131,13 +1132,14 @@ function renderSeiban(data) {
 }
 
 function renderSeibanDetail(data) {
-  let html = '<table><tr><th>日付</th><th>製番</th><th>作業者</th><th>時間</th><th>工数</th></tr>'
+  let html = '<table><tr><th>日付</th><th>製番</th><th>作業者</th><th>作業内容</th><th>時間</th><th>工数</th></tr>'
   let total = 0
 
   data.forEach(row => {
     const seiban = row.seiban_master?.seiban || '不明'
     const equipment = row.seiban_master?.equipment_name || '不明'
     const worker = workerNameMap[row.worker_id] || '作業者未設定'
+    const workType = row.work_type_master?.name || '作業内容不明'
     const time = `${formatTime(row.start_time)}-${formatTime(row.end_time)}`
     const minutes = row.actual_minutes || 0
     html += `
@@ -1145,6 +1147,7 @@ function renderSeibanDetail(data) {
         <td>${escapeHtml(row.work_date)}</td>
         <td>${escapeHtml(seiban)}<br>${escapeHtml(equipment)}</td>
         <td>${escapeHtml(worker)}</td>
+        <td>${escapeHtml(workType)}</td>
         <td>${escapeHtml(time)}</td>
         <td>${minutesToHM(minutes)}</td>
       </tr>
@@ -1152,7 +1155,7 @@ function renderSeibanDetail(data) {
     total += minutes
   })
 
-  html += `<tr class="total-row"><td colspan="4">合計</td><td>${minutesToHM(total)}</td></tr>`
+  html += `<tr class="total-row"><td colspan="5">合計</td><td>${minutesToHM(total)}</td></tr>`
   html += '</table>'
   document.getElementById('summary_table').innerHTML = html
 }

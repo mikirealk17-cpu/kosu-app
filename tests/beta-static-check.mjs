@@ -48,6 +48,8 @@ assert.match(source['login-redirect.mjs'], /candidate\.origin !== current\.origi
 assert.match(source['summary.js'], /exportRows\.rows\.length === 0/)
 assert.match(source['summary.js'], /const refreshed = await window\.loadData\(\)/)
 assert.match(source['summary.js'], /getDisplayedRowsForExport/)
+assert.match(source['summary.js'], /headers: \['日付', '製番', '設備名', '作業者', '作業内容', '実働時間'\]/)
+assert.match(source['summary.js'], /<th>作業内容<\/th>/)
 assert.match(source['app.js'], /normalizeProductionNumber/)
 assert.match(source['app.js'], /showDefaultSeibanCandidates/)
 assert.match(source['logs.js'], /registerEditSeibanFromInput/)
