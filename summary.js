@@ -23,6 +23,10 @@ const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
 document.getElementById('date_from').value = formatDate(firstDay)
 document.getElementById('date_to').value = formatDate(today)
 
+if (authContext.isWorker) {
+  applyWorkerSummaryMode()
+}
+
 window.switchTab = function(tab) {
   const visibleTabs = ['seiban', 'seiban_detail', 'worker']
   if (!visibleTabs.includes(tab)) tab = 'seiban'
@@ -112,9 +116,30 @@ function updateSummaryExcelOption() {
   const excelOption = document.getElementById('summary_excel_option')
 
   if (excelOption) {
-    excelOption.textContent = summaryExcelLabels[currentTab] || '表示中の集計Excel'
+    excelOption.textContent = getSummaryExcelLabel(currentTab)
   }
   updateExportPreview()
+}
+
+function applyWorkerSummaryMode() {
+  document.title = '自分の工数集計'
+
+  const title = document.querySelector('.screen-header h1')
+  if (title) title.textContent = '自分の工数集計'
+
+  const kicker = document.querySelector('.screen-kicker')
+  if (kicker) kicker.textContent = 'My Kosu Analytics'
+
+  const badge = document.querySelector('.screen-badge')
+  if (badge) badge.textContent = '本人集計'
+
+  const description = document.querySelector('.panel-header p')
+  if (description) {
+    description.textContent = '期間と条件を選ぶと、自分が入力した工数だけを集計します。'
+  }
+
+  const workerTab = document.querySelector(`[onclick="switchTab('worker')"]`)
+  if (workerTab) workerTab.textContent = '自分合計'
 }
 
 function updateExportPreview() {
@@ -644,8 +669,21 @@ function createExportMeta(title, from, to) {
 }
 
 function getCurrentSummaryTitle() {
-  const label = summaryExcelLabels[currentTab] || '表示中集計Excel'
+  const label = getSummaryExcelLabel(currentTab)
   return label.replace('Excel', '')
+}
+
+function getSummaryExcelLabel(tab) {
+  if (authContext.isWorker) {
+    const workerLabels = {
+      seiban: '自分の製番別Excel',
+      seiban_detail: '自分の製番明細Excel',
+      worker: '自分合計Excel'
+    }
+    return workerLabels[tab] || '自分の集計Excel'
+  }
+
+  return summaryExcelLabels[tab] || '表示中の集計Excel'
 }
 
 function createExportFilterLabel() {
@@ -1071,11 +1109,15 @@ function renderSummaryMetrics(data) {
   const averageMinutes = recordCount ? Math.round(totalMinutes / recordCount) : 0
   const workerCount = new Set(data.map(row => row.worker_id).filter(Boolean)).size
 
+  const scopeCard = authContext.isWorker
+    ? { label: '対象', value: '本人のみ', note: '他の作業者は含めません' }
+    : { label: '作業者数', value: `${workerCount}人`, note: '期間内に入力あり' }
+
   const cards = [
     { label: '総実働時間', value: minutesToHM(totalMinutes), note: '期間内の合計' },
     { label: '入力件数', value: `${recordCount}件`, note: '保存済み工数' },
     { label: '平均実働', value: minutesToHM(averageMinutes), note: '1件あたり' },
-    { label: '作業者数', value: `${workerCount}人`, note: '期間内に入力あり' }
+    scopeCard
   ]
 
   document.getElementById('summary_metrics').innerHTML = cards.map(card => `

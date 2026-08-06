@@ -44,7 +44,7 @@ export async function requireAuth(allowedRoles = [ROLES.ADMIN, ROLES.WORKER]) {
     renderAccessMessage({
       title: 'この画面を開く権限がありません',
       text: profile.role === ROLES.WORKER
-        ? '作業者は工数入力と自分の履歴確認だけ利用できます。'
+        ? '作業者は工数入力、自分の履歴確認、自分の集計だけ利用できます。'
         : 'このユーザーには、この画面を開く権限がありません。'
     })
     return stopPage()
