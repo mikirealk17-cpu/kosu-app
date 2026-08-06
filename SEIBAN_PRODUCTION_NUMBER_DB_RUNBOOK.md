@@ -1,13 +1,24 @@
 # 生産番号登録機能 DB適用手順
 
-更新日: 2026-08-05
+更新日: 2026-08-06
 
 ## 現在の状態
 
-- GitHub `origin/main` は `af517f2 Add seiban duplicate precheck SQL` までpush済み。
-- Vercel本番にも `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` が配信済み。
+- GitHub `origin/main` は `c5bd217 Harden seiban setup SQL` までpush済み。
+- Vercel本番にも `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` と `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` が配信済み。
 - フロント側の生産番号検索・仮登録UIは本番反映済み。
-- DB本番適用はまだ未実施。
+- DB本番適用は完了済み。
+- 読み取り専用チェックで `empty_key_rows = 0`、正規化後重複0件を確認済み。
+- REST RPCで `normalize_seiban_key('ＡＢ－１２３') = 'AB-123'` を確認済み。
+- 匿名RESTで `seiban_master` が読めないことを確認済み。
+
+## 次に確認すること
+
+- 管理画面 `seibans.html` の未確認一覧に `CODEX-TEST-...` があるか確認する。
+- ある場合は、テスト登録が完了しているため `pending` 状態・正規化キー・設備名を確認する。
+- ない場合は、テスト登録は未完了と判断し、PC操作可能時に再度 `CODEX-TEST-...` で仮登録する。
+- 仮登録確認後、管理者で「確認済みにする」を実行し `confirmed` になることを確認する。
+- 統合テストは本番データ消失リスクがあるため、統合元が明確なテスト用 `pending` データだけで実行する。
 
 ## 実行順序
 

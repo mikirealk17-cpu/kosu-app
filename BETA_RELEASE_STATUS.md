@@ -1,6 +1,6 @@
 # 工数管理アプリ β版公開状況
 
-更新日: 2026-08-05
+更新日: 2026-08-06
 
 ## 判定
 
@@ -30,18 +30,23 @@
 - 新規・更新データをDB側でも検証するNOT VALID制約SQLを用意。
 - バックアップと別環境復元の手順を文書化。
 - β安全修正と追加ドキュメントを元リポジトリ `/Users/katomikihiko/kosu-app` へ反映。
-- `af517f2 Add seiban duplicate precheck SQL` までGitHub pushとVercel本番反映を確認。
+- `c5bd217 Harden seiban setup SQL` までGitHub pushとVercel本番反映を確認。
 - 生産番号の正規化共通関数、作業者による候補検索・仮登録、管理者の未確認確認・統合導線を元リポジトリへ反映。
 - `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を追加。`seiban_key` UNIQUE制約、`pending/confirmed`、登録者・確認者、統合RPCを含む。
 - DB変更前に実行する読み取り専用の `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を追加。
 - 生産番号登録機能のDB適用手順 `SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md` を追加。
+- `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を本番Supabaseで実行し、空キー0件・正規化後重複0件を確認。
+- `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を本番Supabaseへ適用。
+- REST RPCで `normalize_seiban_key('ＡＢ－１２３')` が `AB-123` を返すことを確認。
+- 匿名RESTで `seiban_master` が読めないことを確認。
+- 本番工数入力画面で、生産番号検索UIと未登録時の仮登録ボタン表示を確認。
 
 ## 公開前必須
 
 - [x] ローカルコミットを `origin/main` へpushし、Vercelへデプロイする。
-- [ ] 先に `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を実行し、空キー0件・重複0件を確認する。
-- [ ] `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を本番へ適用する。
-- [ ] 生産番号の表記揺れ、作業者仮登録、管理者確認、統合を本番DB適用後に確認する。
+- [x] 先に `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を実行し、空キー0件・重複0件を確認する。
+- [x] `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を本番へ適用する。
+- [ ] 生産番号の表記揺れ、作業者仮登録、管理者確認、統合を本番DB適用後に確認する。`CODEX-TEST-...` のテスト登録は確認ダイアログ後にブラウザ接続がタイムアウトした可能性があるため、管理画面の未確認一覧で継続確認する。
 - [ ] デプロイ後、管理者・作業者の両方で保存、編集、権限制御を再確認する。
 - [ ] DBバックアップ取得後、`SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認してから本番へ適用する。
 - [ ] `SUPABASE_BETA_VALIDATION_SETUP.sql` をテスト環境で確認し、既存データ違反がないことを確認してから本番へ適用する。
