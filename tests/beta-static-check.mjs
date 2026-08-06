@@ -26,7 +26,9 @@ const files = await Promise.all([
   'style.css',
   'supabaseClient.js',
   'SUPABASE_AUTH_RLS_POLICIES.sql',
+  'SUPABASE_BETA_AUDIT_CONFIRM_ONLY.sql',
   'SUPABASE_BETA_AUDIT_SETUP.sql',
+  'SUPABASE_BETA_VALIDATION_CONFIRM_ONLY.sql',
   'SUPABASE_BETA_VALIDATION_SETUP.sql',
   'SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql',
   'SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql',
@@ -71,6 +73,10 @@ assert.match(source['summary.js'], /他の作業者は含めません/)
 assert.match(source['auth.js'], /自分の履歴確認、自分の集計/)
 assert.match(source['SUPABASE_BETA_AUDIT_SETUP.sql'], /create table if not exists public\.audit_log/i)
 assert.match(source['SUPABASE_BETA_AUDIT_SETUP.sql'], /old_data jsonb/i)
+assert.match(source['SUPABASE_BETA_AUDIT_CONFIRM_ONLY.sql'], /audit_ready_summary|target_tables|audit_triggers/)
+assert.doesNotMatch(source['SUPABASE_BETA_AUDIT_CONFIRM_ONLY.sql'], /\b(update|delete|insert|alter|create)\b/i)
+assert.match(source['SUPABASE_BETA_VALIDATION_CONFIRM_ONLY.sql'], /work_logs_existing_data|seiban_master_existing_data|expected_constraints_present/)
+assert.doesNotMatch(source['SUPABASE_BETA_VALIDATION_CONFIRM_ONLY.sql'], /\b(update|delete|insert|alter|create)\b/i)
 assert.match(source['SUPABASE_BETA_VALIDATION_SETUP.sql'], /work_logs_actual_minutes_beta/i)
 assert.match(source['SUPABASE_BETA_VALIDATION_SETUP.sql'], /not valid/i)
 assert.match(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql'], /seiban_master_seiban_key_uidx/i)

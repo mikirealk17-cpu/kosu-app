@@ -75,6 +75,7 @@
 - [実装完了] ログイン後redirectを同一オリジンの許可画面だけに制限した
 - [未適用] `SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認し、バックアップ後に本番へ適用する
 - [未適用] `SUPABASE_BETA_VALIDATION_SETUP.sql` をテスト環境で確認し、既存データの違反0件を確認後に本番へ適用する
+- [実装完了] 監査ログSQLとDB入力制約SQLを安全に進めるため、データ変更なしの確認専用SQL `SUPABASE_BETA_AUDIT_CONFIRM_ONLY.sql` と `SUPABASE_BETA_VALIDATION_CONFIRM_ONLY.sql` を追加した
 - [完了] `SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql` を実行し、正規化後の空キー0件・重複0件を確認した
 - [完了] `SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql` を本番へ適用し、`normalize_seiban_key('ＡＢ－１２３') = 'AB-123'` をREST RPCで確認した
 - [実装完了・本番反映済み] 生産番号の正規化、候補検索、作業者の仮登録、管理者の確認済み更新、未確認番号の統合導線を追加した

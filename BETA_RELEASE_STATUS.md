@@ -50,7 +50,9 @@
 - [ ] 生産番号の表記揺れ、作業者仮登録、管理者確認、統合を本番DB適用後に確認する。`CODEX-TEST-...` のテスト登録は確認ダイアログ後にブラウザ接続がタイムアウトした可能性があるため、管理画面の未確認一覧で継続確認する。
 - [ ] `SUPABASE_AUTH_RLS_POLICIES.sql` を再実行した場合は、続けて `SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql` を実行する。
 - [ ] デプロイ後、管理者・作業者の両方で保存、編集、権限制御を再確認する。
+- [ ] `SUPABASE_BETA_AUDIT_CONFIRM_ONLY.sql` を実行し、監査ログSQLの適用状況と不足項目を確認する。
 - [ ] DBバックアップ取得後、`SUPABASE_BETA_AUDIT_SETUP.sql` をテスト環境で確認してから本番へ適用する。
+- [ ] `SUPABASE_BETA_VALIDATION_CONFIRM_ONLY.sql` を実行し、既存データ違反がないことを確認してから本番へ適用する。
 - [ ] `SUPABASE_BETA_VALIDATION_SETUP.sql` をテスト環境で確認し、既存データ違反がないことを確認してから本番へ適用する。
 - [ ] Supabaseの現在プランと `Database > Backups` の利用可否・最新時刻を確認する。
 - [ ] iPhone Safari実機で入力、編集、キーボード表示、ボタン操作を確認する。
