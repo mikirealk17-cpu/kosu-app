@@ -17,7 +17,14 @@ Supabase公式情報:
 - Database Backups: https://supabase.com/docs/guides/platform/backups
 - CLIによるBackup and Restore: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
 
-2026-08-03時点の公式説明では、日次バックアップはPro・Team・Enterpriseで自動取得され、保持期間はPro 7日、Team 14日、Enterpriseは最大30日です。FreeプロジェクトはCLIで定期的にエクスポートすることが推奨されています。実際の契約とDashboard表示を必ず優先してください。
+2026-08-06時点の公式説明では、日次バックアップはPro・Team・Enterpriseで自動取得され、保持期間はPro 7日、Team 14日、Enterpriseは最大30日です。FreeプロジェクトはCLIで定期的にエクスポートすることが推奨されています。実際の契約とDashboard表示を必ず優先してください。
+
+注意:
+
+- Dashboardからの復元中はプロジェクトへアクセスできない時間が発生するため、β利用者へ事前連絡してから実行する。
+- DBバックアップはStorage API上の実ファイルを復元しない。現状の工数管理版はファイル保存を使っていない前提だが、将来添付ファイルを追加した場合はStorageの退避手順も別途必要。
+- カスタムDBロールを使っている場合、日次バックアップからの復元後にロールのパスワード再設定が必要になる可能性がある。
+- より細かい時点へ戻す必要がある場合は、Pro以上でPoint-in-Time Recoveryの利用を検討する。ただしPITRは追加費用とCompute条件があるため、β版ではまず日次バックアップと日次Excel退避を基本にする。
 
 ## CLIバックアップ
 
