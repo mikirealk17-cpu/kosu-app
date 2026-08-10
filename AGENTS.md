@@ -135,21 +135,48 @@
 
 ### Git運用ルール
 
-- コード変更、修正、機能追加を依頼された場合、作業完了の条件は以下のすべてを満たすこと。
+- 通常のコード変更、修正、機能追加では `main` へ直接commit/pushしない。
+- 作業開始時は `main` が `origin/main` と同期していることを確認し、作業内容に応じた作業ブランチを作成する。
+  - 新機能: `feature/...`
+  - バグ修正: `fix/...`
+  - ドキュメントのみ: `docs/...`
+  - 開発環境・CI: `chore/...`
+- 作業ブランチへのcommit/pushはCodexが自動で行ってよい。
+- コード変更、修正、機能追加を依頼された場合、作業完了の条件は原則として以下のすべてを満たすこと。
   1. 必要な変更を実装する
   2. テストまたは確認を実行する
   3. 変更内容を確認する
   4. Gitコミットを作成する
-  5. 現在のブランチをGitHubのoriginへpushする
-  6. push成功を確認する
+  5. 作業ブランチをGitHubのoriginへpushする
+  6. Pull Requestを作成する、または作成用URLを報告する
+  7. GitHub ActionsのCI結果を確認する
+  8. Vercel Preview URLが取得できる場合は報告する
 - ローカルコミットだけで作業を終了しない。
 - ユーザーに「ターミナルでgit pushしてください」と依頼しない。
 - upstreamが設定済みなら `git push` を使用する。
 - upstreamが未設定なら `git push -u origin HEAD` を使用する。
 - force push、`--force`、`--force-with-lease` は使用しない。
-- mainや他のブランチへ勝手に切り替えない。
+- `main` や他のブランチへ勝手に切り替えない。ただし作業開始時に `main` から作業ブランチを作る場合、またはユーザーが明確に依頼した場合は除く。
 - push後は、現在のブランチがoriginよりaheadになっていないことを確認する。
 - 最終報告には、pushしたブランチ名とコミットハッシュを記載する。
 - pushに失敗した場合は、remote、認証、ネットワーク、upstreamを確認し、安全に修正可能な問題は自分で修正して再試行する。
 - コンフリクト、ブランチ保護、GitHubへの対話式ログインが必要な場合のみ停止して、具体的な原因を報告する。
 - GitHubのトークン、秘密鍵、パスワードをリポジトリやAGENTS.mdへ保存しない。
+- `main` へのmergeは、人間が「mergeして」「本番反映して」「OK」など明確に承認した場合のみ行う。
+- 通常開発では、Codexが勝手に `main` へmergeしない。
+- `main` へmergeする前に、GitHub ActionsのCI成功を確認する。
+- merge後はVercel Productionの反映状態を確認する。
+
+### GitHub Actions / CI ルール
+
+- 変更後は必ず `npm test` を実行する。
+- GitHub Actionsでも `npm test` を実行する。
+- テスト失敗状態で `main` へmergeしない。
+- CIが確認不能な場合は、確認不能の理由とGitHub上で確認すべき場所を報告する。
+
+### Vercel Preview ルール
+
+- feature/fix/docs/chore ブランチまたはPull Requestでは、可能な限りVercel Preview Deploymentを使って確認する。
+- Productionで初めて確認する運用を避ける。
+- Preview URLが取得できる場合は、作業完了報告に「スマホ確認用Preview URL」として載せる。
+- Vercel Dashboard権限などでPreview状態を確認できない場合は、推測せず確認不能と報告する。
