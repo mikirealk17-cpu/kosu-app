@@ -11,6 +11,23 @@
 
 この段階のSQLは読み取り専用です。結果に問題があっても、続けてSETUP SQLを実行しません。
 
+### 結果の判断方法
+
+`SUPABASE_BETA_AUDIT_CONFIRM_ONLY.sql`:
+
+- `target_tables` の `ng_count` は `0` が必須。
+- `audit_log_columns`、`audit_triggers`、`required_functions` は、監査ログ未適用なら `ng_count` が残っていても想定内。
+- 監査ログSETUP適用後は、上記すべての `ng_count` が `0` になったことを確認する。
+
+`SUPABASE_BETA_VALIDATION_CONFIRM_ONLY.sql`:
+
+- `work_logs_existing_data` の `issue_count` は `0` が必須。
+- `seiban_master_existing_data` の `issue_count` は `0` が必須。
+- `expected_constraints_present` は入力制約未適用なら不足数が表示されても想定内。SETUP適用後は `0` が必須。
+- `expected_constraints_validated` はSETUP適用後に `0` が必須。
+
+既存データの `issue_count` が1件以上なら、対象IDと理由を記録して停止します。自動修正や削除は行いません。
+
 ## 2. バックアップ確認
 
 1. Supabase Dashboardの `Database > Backups` で、プランと最新バックアップ日時を確認する。
