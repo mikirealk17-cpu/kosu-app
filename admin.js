@@ -1,7 +1,8 @@
 import { supabase } from './supabaseClient.js'
 import { requireAuth, ROLES } from './auth.js'
+import { scopeCompanyQuery } from './company-context.mjs'
 
-await requireAuth([ROLES.ADMIN])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN])
 
 const countTargets = [
   { id: 'count_workers', table: 'worker_master', label: '作業者', activeOnly: true },
@@ -26,18 +27,18 @@ async function loadAdminCounts() {
 }
 
 async function loadCount(target) {
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from(target.table)
-    .select('*', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true }), authContext)
 
   if (target.activeOnly) query = query.eq('is_active', true)
 
   let { count, error } = await query
 
   if (target.activeOnly && isMissingActiveColumn(error)) {
-    const fallback = await supabase
+    const fallback = await scopeCompanyQuery(supabase
       .from(target.table)
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true }), authContext)
     count = fallback.count
     error = fallback.error
   }

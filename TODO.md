@@ -59,6 +59,12 @@
 
 ### 優先度高
 
+- [実装完了・本番未適用] 複数社対応の会社管理、会社管理者権限、招待制アカウント作成、全マスタと工数の会社ID分離、厳格RLS migrationを追加した
+- [未実施] `MULTI_COMPANY_RUNBOOK.md` に従い、別Supabaseプロジェクトで複数社migrationとA社/B社分離テストを行う
+- [未実施] 本番バックアップ後に準備migration・確認SQL・既存1社データのbackfillを行い、全確認結果が0件になってから厳格RLSを適用する
+- [未実施] `invite-company-user` Edge Functionをデプロイし、`APP_ORIGIN` を設定して実メールのパスワード設定を確認する
+- [未実施] 2社目追加前に、A社管理者・A社作業者・B社管理者・B社作業者で直接URLとRESTアクセスを含む会社分離テストを完了する
+
 - [完了] Supabase SQL Editorで `SUPABASE_WORK_TRACKING_RELEASE_SECURITY.sql` を実行し、公開キーから金額系データを読めない状態にする
 - [完了] SQL実行後、公開キーで `rate_master` と `work_logs.rate_type` / `rate_master_id` / `unit_price` / `billing_amount` が読めないことを確認する
 - [完了] SQL実行後、工数の追加・更新・削除、履歴画面、集計画面、Excel出力が壊れていないことを確認した
@@ -112,15 +118,12 @@
 ### 優先度低
 
 - `SUPABASE_RATE_SETUP.sql` を再実行し、元請けマスタ・単価マスタの大元請け必須を解除する
-- 会社管理者権限を第2段階で追加するか確認する
-- 全マスタの会社単位RLSは `MULTI_COMPANY_MIGRATION_PLAN.md` に従い、2社目追加前に実装する
+- [実装完了・本番未適用] 会社管理者権限を追加した。テスト環境のA社/B社分離テスト後に有効化する
+- [実装完了・本番未適用] 全マスタの会社単位RLSを追加した。2社目追加前に `MULTI_COMPANY_RUNBOOK.md` の手順で適用する
 
 ## 将来拡張
 
-- Supabase Authによるログイン
-- `SUPABASE_AUTH_PERMISSION_SETUP.sql` の実行
-- 既存作業者と既存工数への会社ID付与
-- 会社管理者、作業者、システム管理者の権限分離
+- 複数社移行後の会社管理者向け運用サポート
 - 請求済みフラグ
 - 履歴編集で元請け、作業者、製番、単価区分を変更した時の単価再判定
 - 請求書番号

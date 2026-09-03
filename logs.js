@@ -6,6 +6,7 @@ import {
   isContractRate
 } from './rate-utils.js'
 import { hasTimeOverlap } from './time-rules.mjs'
+import { getCompanyInsertFields, scopeCompanyQuery } from './company-context.mjs'
 import {
   createProductionNumberKey,
   filterRecentProductionNumberCandidates,
@@ -18,7 +19,7 @@ import {
   compareProductionNumberCandidates
 } from './production-number-utils.mjs'
 
-const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN, ROLES.WORKER])
 const RATE_EDIT_ENABLED = false
 
 let logs = []
@@ -89,11 +90,11 @@ function showMessage(text, type, duration = 3000) {
 }
 
 async function loadWorkTypes() {
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('work_type_master')
     .select('*')
     .eq('is_active', true)
-    .order('sort_order')
+    .order('sort_order'), authContext)
 
   const select = document.getElementById('edit_work_type')
   select.innerHTML = ''
@@ -122,11 +123,11 @@ async function loadWorkers() {
   emptyOption.textContent = '作業者を選択'
   select.appendChild(emptyOption)
 
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('worker_master')
     .select('*')
     .eq('is_active', true)
-    .order('sort_order')
+    .order('sort_order'), authContext)
 
   if (authContext.isWorker) {
     query = query.eq('id', authContext.profile.worker_id)
@@ -180,12 +181,12 @@ async function loadBillingCompanyOptions() {
   const select = document.getElementById('edit_billing_company')
   select.innerHTML = '<option value="">元請けを選択</option>'
 
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('billing_company_master')
     .select('id, name')
     .eq('is_active', true)
     .order('sort_order')
-    .order('name')
+    .order('name'), authContext)
 
   if (error || !data) {
     console.error('元請け一覧の取得に失敗しました', error)
@@ -217,7 +218,7 @@ window.loadLogs = async function() {
     : ''
   const filters = getFilters()
 
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('work_logs')
     .select(`
       id,
@@ -243,7 +244,7 @@ window.loadLogs = async function() {
     .gte('work_date', from)
     .lte('work_date', to)
     .order('work_date', { ascending: false })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }), authContext)
 
   query = applyFilters(query, filters)
 
@@ -375,12 +376,12 @@ async function deleteLog(id) {
   deletingLogIds.add(id)
 
   try {
-    const { data: deletedLog, error } = await supabase
+    const { data: deletedLog, error } = await scopeCompanyQuery(supabase
       .from('work_logs')
       .delete()
       .eq('id', id)
       .select('id')
-      .maybeSingle()
+      .maybeSingle(), authContext)
 
     if (error || !deletedLog) {
       console.error('入力履歴の削除に失敗しました', error)
@@ -467,11 +468,11 @@ async function loadFilterOptions() {
 }
 
 async function loadWorkerFilterOptions() {
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('worker_master')
     .select('id, name')
     .eq('is_active', true)
-    .order('sort_order')
+    .order('sort_order'), authContext)
 
   if (authContext.isWorker) {
     query = query.eq('id', authContext.profile.worker_id)
@@ -497,11 +498,11 @@ async function loadWorkerFilterOptions() {
 }
 
 async function loadWorkTypeFilterOptions() {
-  const { data } = await supabase
+  const { data } = await scopeCompanyQuery(supabase
     .from('work_type_master')
     .select('id, name')
     .eq('is_active', true)
-    .order('sort_order')
+    .order('sort_order'), authContext)
 
   const select = document.getElementById('filter_work_type')
   select.innerHTML = '<option value="">全作業内容</option>'
@@ -531,18 +532,18 @@ async function loadSeibanFilterOptions() {
 }
 
 async function fetchActiveSeibans() {
-  const result = await supabase
+  const result = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
     .eq('is_active', true)
-    .order('seiban')
+    .order('seiban'), authContext)
 
   if (!isMissingSeibanMetadataColumn(result.error)) return result
 
-  return supabase
+  return scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, equipment_name')
-    .order('seiban')
+    .order('seiban'), authContext)
 }
 
 function isMissingSeibanMetadataColumn(error) {
@@ -557,20 +558,20 @@ function isMissingSeibanMetadataColumn(error) {
 
 async function findActiveSeibanByCode(seiban) {
   const key = createProductionNumberKey(seiban)
-  const result = await supabase
+  const result = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
     .eq('seiban_key', key)
     .eq('is_active', true)
-    .maybeSingle()
+    .maybeSingle(), authContext)
 
   if (!isMissingSeibanMetadataColumn(result.error)) return result
 
-  return supabase
+  return scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, equipment_name')
     .eq('seiban', key)
-    .maybeSingle()
+    .maybeSingle(), authContext)
 }
 
 async function insertActiveSeiban(payload) {
@@ -583,7 +584,8 @@ async function insertActiveSeiban(payload) {
     status: authContext.isWorker ? 'pending' : 'confirmed',
     created_by: authContext.session.user.id,
     confirmed_by: authContext.isAdmin ? authContext.session.user.id : null,
-    confirmed_at: authContext.isAdmin ? new Date().toISOString() : null
+    confirmed_at: authContext.isAdmin ? new Date().toISOString() : null,
+    ...getCompanyInsertFields(authContext)
   }
 
   const result = await supabase
@@ -666,18 +668,18 @@ async function showDefaultEditSeibanCandidates(searchSeq = ++editSeibanSearchSeq
 
 async function fetchEditSeibanCandidates(seiban, options = {}) {
   const key = createProductionNumberKey(seiban)
-  const result = await supabase
+  const result = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
     .order('seiban')
-    .limit(300)
+    .limit(300), authContext)
 
   if (result.error && isMissingSeibanMetadataColumn(result.error)) {
-    const fallback = await supabase
+    const fallback = await scopeCompanyQuery(supabase
       .from('seiban_master')
       .select('id, seiban, equipment_name, is_active')
       .order('seiban')
-      .limit(300)
+      .limit(300), authContext)
     if (fallback.error || !fallback.data) return fallback
     return { data: filterSeibanCandidates(fallback.data, key, options), error: null }
   }
@@ -1008,12 +1010,12 @@ async function updateLogOnce() {
     actualMinutes
   })
 
-  const { data: updatedLog, error } = await supabase
+  const { data: updatedLog, error } = await scopeCompanyQuery(supabase
     .from('work_logs')
     .update(updateData)
     .eq('id', editingLog.id)
     .select('id')
-    .maybeSingle()
+    .maybeSingle(), authContext)
 
   if (error || !updatedLog) {
     console.error('入力履歴の更新に失敗しました', error)
@@ -1042,11 +1044,11 @@ function isValidTime(value) {
 async function hasOverlappingTimeLog(workerId, workDate, startTime, endTime, excludedId) {
   if (!workerFeatureEnabled || !workerId) return false
 
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('work_logs')
     .select('id, start_time, end_time')
     .eq('work_date', workDate)
-    .eq('worker_id', workerId)
+    .eq('worker_id', workerId), authContext)
 
   if (excludedId) query = query.neq('id', excludedId)
 
@@ -1077,12 +1079,12 @@ async function findOrCreateSeiban(seiban, equipmentName) {
 }
 
 async function findApplicableRate({ billingCompanyId, workerId, seibanId, rateType, actualMinutes }) {
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('rate_master')
     .select('id, amount')
     .eq('is_active', true)
     .eq('rate_type', rateType)
-    .eq('billing_company_id', billingCompanyId)
+    .eq('billing_company_id', billingCompanyId), authContext)
 
   if (isContractRate(rateType)) {
     query = query.eq('seiban_id', seibanId).is('worker_id', null)

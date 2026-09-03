@@ -6,6 +6,7 @@ import {
   isContractRate
 } from './rate-utils.js'
 import { hasTimeOverlap } from './time-rules.mjs'
+import { getCompanyInsertFields, scopeCompanyQuery } from './company-context.mjs'
 import {
   createProductionNumberKey,
   filterRecentProductionNumberCandidates,
@@ -18,7 +19,7 @@ import {
   compareProductionNumberCandidates
 } from './production-number-utils.mjs'
 
-const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN, ROLES.WORKER])
 const BILLING_INPUT_ENABLED = false
 const RATE_INPUT_ENABLED = false
 
@@ -63,11 +64,11 @@ function hideControl(element) {
 
 // 作業内容を読み込む
 async function loadWorkTypes() {
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('work_type_master')
     .select('*')
     .eq('is_active', true)
-    .order('sort_order')
+    .order('sort_order'), authContext)
 
   const select = document.getElementById('work_type')
   select.innerHTML = ''
@@ -159,18 +160,18 @@ async function showDefaultSeibanCandidates(searchSeq = ++seibanSearchSeq) {
 
 async function fetchSeibanCandidates(seiban, options = {}) {
   const key = createProductionNumberKey(seiban)
-  const result = await supabase
+  const result = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
     .order('seiban')
-    .limit(300)
+    .limit(300), authContext)
 
   if (result.error && isMissingSeibanMetadataColumn(result.error)) {
-    const fallback = await supabase
+    const fallback = await scopeCompanyQuery(supabase
       .from('seiban_master')
       .select('id, seiban, equipment_name, is_active')
       .order('seiban')
-      .limit(300)
+      .limit(300), authContext)
     if (fallback.error || !fallback.data) return fallback
     return { data: filterSeibanCandidates(fallback.data, key, options), error: null }
   }
@@ -201,20 +202,20 @@ function filterSeibanCandidates(rows, key, options = {}) {
 
 async function findActiveSeiban(seiban) {
   const key = createProductionNumberKey(seiban)
-  const result = await supabase
+  const result = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
     .eq('seiban_key', key)
     .eq('is_active', true)
-    .maybeSingle()
+    .maybeSingle(), authContext)
 
   if (!isMissingSeibanMetadataColumn(result.error)) return result
 
-  return supabase
+  return scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, equipment_name')
     .eq('seiban', key)
-    .maybeSingle()
+    .maybeSingle(), authContext)
 }
 
 function findExactSeiban(rows, seiban) {
@@ -293,7 +294,8 @@ async function insertActiveSeiban(payload) {
     status: authContext.isWorker ? 'pending' : 'confirmed',
     created_by: authContext.session.user.id,
     confirmed_by: authContext.isAdmin ? authContext.session.user.id : null,
-    confirmed_at: authContext.isAdmin ? new Date().toISOString() : null
+    confirmed_at: authContext.isAdmin ? new Date().toISOString() : null,
+    ...getCompanyInsertFields(authContext)
   }
 
   const result = await supabase
@@ -582,7 +584,8 @@ async function saveLogOnce() {
     break1_minutes: break1,
     break2_minutes: break2,
     actual_minutes: actualMinutes,
-    note
+    note,
+    ...getCompanyInsertFields(authContext)
   }
 
   // DB側にworker_id列がある場合だけ作業者IDを保存します。
@@ -668,11 +671,11 @@ function getSelectedOptionText(selectId) {
 async function hasDuplicateTimeLog(workerId, workDate, startTime, endTime) {
   if (!workerFeatureEnabled || !workerId) return false
 
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('work_logs')
     .select('id, start_time, end_time')
     .eq('work_date', workDate)
-    .eq('worker_id', workerId)
+    .eq('worker_id', workerId), authContext)
 
   if (error || !data) {
     console.error('重複確認に失敗しました', error)
@@ -751,11 +754,11 @@ window.searchSeiban = searchSeiban
 window.saveLog = saveLog
 
 async function loadWorkers() {
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('worker_master')
     .select('*')
     .eq('is_active', true)
-    .order('sort_order')
+    .order('sort_order'), authContext)
 
   if (authContext.isWorker) {
     query = query.eq('id', authContext.profile.worker_id)
@@ -823,20 +826,20 @@ async function loadBillingCompanies() {
     return
   }
 
-  let { data, error } = await supabase
+  let { data, error } = await scopeCompanyQuery(supabase
     .from('billing_company_master')
     .select('id, name')
     .eq('is_active', true)
     .order('sort_order')
-    .order('name')
+    .order('name'), authContext)
 
   if (error) {
-    const fallback = await supabase
+    const fallback = await scopeCompanyQuery(supabase
       .from('billing_company_master')
       .select('id, name')
       .eq('is_active', true)
       .order('sort_order')
-      .order('name')
+      .order('name'), authContext)
     data = fallback.data
     error = fallback.error
   }
@@ -894,12 +897,12 @@ async function checkRateFeature() {
 }
 
 async function findApplicableRate({ billingCompanyId, workerId, seibanId, rateType, actualMinutes }) {
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('rate_master')
     .select('id, amount')
     .eq('is_active', true)
     .eq('rate_type', rateType)
-    .eq('billing_company_id', billingCompanyId)
+    .eq('billing_company_id', billingCompanyId), authContext)
 
   if (isContractRate(rateType)) {
     query = query.eq('seiban_id', seibanId).is('worker_id', null)
@@ -948,13 +951,13 @@ async function applyLastBillingCompany(workerId) {
     select.value = savedCompanyId
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('work_logs')
     .select('billing_company_id')
     .eq('worker_id', workerId)
     .not('billing_company_id', 'is', null)
     .order('work_date', { ascending: false })
-    .limit(1)
+    .limit(1), authContext)
 
   if (error || !data || data.length === 0) return
 

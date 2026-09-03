@@ -1114,3 +1114,50 @@ tr:last-child td {
     min-width: 920px;
   }
 }
+
+.auth-company-select {
+  min-width: 180px;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 34px 8px 10px;
+}
+
+.auth-company-label {
+  color: #475467;
+  font-size: 13px;
+}
+
+.company-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.company-form-grid .full-row {
+  grid-column: 1 / -1;
+}
+
+.company-meta {
+  display: block;
+  color: #667085;
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.migration-required {
+  padding: 14px;
+  border: 1px solid #fdb022;
+  border-radius: 10px;
+  background: #fffaeb;
+  color: #7a2e0e;
+}
+
+@media (max-width: 640px) {
+  .company-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-company-select {
+    width: 100%;
+  }
+}

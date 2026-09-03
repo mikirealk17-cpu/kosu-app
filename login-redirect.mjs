@@ -7,7 +7,9 @@ export const ALLOWED_REDIRECT_PAGES = new Set([
   'work-types.html',
   'seibans.html',
   'rates.html',
-  'billing-companies.html'
+  'billing-companies.html',
+  'companies.html',
+  'company-users.html'
 ])
 
 export function getSafeLocalRedirect(path, currentLocation) {

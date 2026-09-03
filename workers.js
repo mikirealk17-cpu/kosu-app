@@ -1,15 +1,16 @@
 import { supabase } from './supabaseClient.js'
 import { requireAuth, ROLES } from './auth.js'
+import { getCompanyInsertFields, scopeCompanyQuery } from './company-context.mjs'
 
-await requireAuth([ROLES.ADMIN])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN])
 
 window.loadWorkers = async function() {
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('worker_master')
     .select('*')
     .order('is_active', { ascending: false })
     .order('sort_order')
-    .order('name')
+    .order('name'), authContext)
 
   const list = document.getElementById('worker_list')
   list.innerHTML = ''
@@ -85,7 +86,7 @@ window.addWorker = async function() {
 
   const { error } = await supabase
     .from('worker_master')
-    .insert({ name })
+    .insert({ name, ...getCompanyInsertFields(authContext) })
 
   if (error) {
     console.error('作業者の追加に失敗しました', error)
@@ -101,10 +102,10 @@ window.editWorker = async function(id, oldName) {
   const newName = prompt('新しい名前を入力してください', oldName)
   if (!newName || newName.trim() === '') return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('worker_master')
     .update({ name: newName.trim() })
-    .eq('id', id)
+    .eq('id', id), authContext)
 
   if (error) {
     console.error('作業者の更新に失敗しました', error)
@@ -118,10 +119,10 @@ window.editWorker = async function(id, oldName) {
 window.hideWorker = async function(id, name) {
   if (!confirm(`${name} さんを非表示にしますか？\n\n過去の工数データは残ります。`)) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('worker_master')
     .update({ is_active: false })
-    .eq('id', id)
+    .eq('id', id), authContext)
 
   if (error) {
     console.error('作業者の非表示に失敗しました', error)
@@ -135,10 +136,10 @@ window.hideWorker = async function(id, name) {
 window.restoreWorker = async function(id, name) {
   if (!confirm(`${name} さんを作業者一覧に戻しますか？`)) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('worker_master')
     .update({ is_active: true })
-    .eq('id', id)
+    .eq('id', id), authContext)
 
   if (error) {
     console.error('作業者の復活に失敗しました', error)

@@ -1,4 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.2/+esm'
 
 // ブラウザで動くアプリなので、このキーは利用者から見えます。
 // Supabase側でRLSを有効にし、公開してよい操作だけ許可してください。

@@ -1,11 +1,12 @@
 import { supabase } from './supabaseClient.js'
 import { requireAuth, ROLES } from './auth.js'
+import { getCompanyInsertFields, scopeCompanyQuery } from './company-context.mjs'
 import {
   createProductionNumberKey,
   normalizeProductionNumber
 } from './production-number-utils.mjs'
 
-const authContext = await requireAuth([ROLES.ADMIN])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN])
 
 window.loadSeibans = async function() {
   const list = document.getElementById('seiban_list')
@@ -119,19 +120,19 @@ window.addSeiban = async function() {
 }
 
 async function fetchSeibans() {
-  const result = await supabase
+  const result = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, seiban_key, equipment_name, customer_name, status, created_by, created_at, confirmed_by, confirmed_at, is_active')
     .order('status', { ascending: false })
     .order('is_active', { ascending: false })
-    .order('seiban')
+    .order('seiban'), authContext)
 
   if (!isMissingMetadataColumnError(result.error)) return result
 
-  return supabase
+  return scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, equipment_name')
-    .order('seiban')
+    .order('seiban'), authContext)
 }
 
 async function insertSeiban(payload) {
@@ -146,14 +147,15 @@ async function insertSeiban(payload) {
       is_active: true,
       created_by: authContext.session.user.id,
       confirmed_by: authContext.session.user.id,
-      confirmed_at: new Date().toISOString()
+      confirmed_at: new Date().toISOString(),
+      ...getCompanyInsertFields(authContext)
     })
 
   if (!isMissingMetadataColumnError(result.error)) return result
 
   return supabase
     .from('seiban_master')
-    .insert({ seiban, equipment_name: payload.equipment_name })
+    .insert({ seiban, equipment_name: payload.equipment_name, ...getCompanyInsertFields(authContext) })
 }
 
 async function editSeiban(current) {
@@ -187,19 +189,19 @@ async function editSeiban(current) {
     customer_name: customerName?.trim() || null
   }
 
-  let { error } = await supabase
+  let { error } = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .update(updatePayload)
-    .eq('id', current.id)
+    .eq('id', current.id), authContext)
 
   if (isMissingMetadataColumnError(error)) {
-    const fallback = await supabase
+    const fallback = await scopeCompanyQuery(supabase
       .from('seiban_master')
       .update({
         seiban: normalizedSeiban,
         equipment_name: equipmentName.trim()
       })
-      .eq('id', current.id)
+      .eq('id', current.id), authContext)
     error = fallback.error
   }
 
@@ -216,14 +218,14 @@ async function editSeiban(current) {
 async function confirmSeiban(seiban) {
   if (!confirm(`「${seiban.seiban}」を確認済みにしますか？`)) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .update({
       status: 'confirmed',
       confirmed_by: authContext.session.user.id,
       confirmed_at: new Date().toISOString()
     })
-    .eq('id', seiban.id)
+    .eq('id', seiban.id), authContext)
 
   if (error) {
     console.error('製番の確認済み更新に失敗しました', error)
@@ -285,10 +287,10 @@ async function toggleSeibanVisibility(seiban) {
   const action = isActive ? '非表示' : '再表示'
   if (!confirm(`この製番を${action}にしますか？`)) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .update({ is_active: !isActive })
-    .eq('id', seiban.id)
+    .eq('id', seiban.id), authContext)
 
   if (error) {
     console.error(`製番の${action}に失敗しました`, error)
@@ -306,19 +308,19 @@ async function toggleSeibanVisibility(seiban) {
 
 async function findSeibanByKey(value) {
   const key = createProductionNumberKey(value)
-  const result = await supabase
+  const result = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, seiban_key, equipment_name, customer_name, status, is_active')
     .eq('seiban_key', key)
-    .maybeSingle()
+    .maybeSingle(), authContext)
 
   if (!isMissingMetadataColumnError(result.error)) return result
 
-  return supabase
+  return scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, equipment_name, is_active')
     .eq('seiban', key)
-    .maybeSingle()
+    .maybeSingle(), authContext)
 }
 
 async function fetchActorNames(seibans) {
@@ -334,10 +336,10 @@ async function fetchActorNames(seibans) {
   const workerIds = [...new Set((profiles || []).map(profile => profile.worker_id).filter(Boolean))]
   let workerMap = new Map()
   if (workerIds.length > 0) {
-    const { data: workers } = await supabase
+    const { data: workers } = await scopeCompanyQuery(supabase
       .from('worker_master')
       .select('id, name')
-      .in('id', workerIds)
+      .in('id', workerIds), authContext)
     workerMap = new Map((workers || []).map(worker => [worker.id, worker.name]))
   }
 

@@ -1,18 +1,19 @@
 import { supabase } from './supabaseClient.js'
 import { requireAuth, ROLES } from './auth.js'
+import { getCompanyInsertFields, scopeCompanyQuery } from './company-context.mjs'
 
-await requireAuth([ROLES.ADMIN])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN])
 
 window.loadWorkTypes = async function() {
   const list = document.getElementById('work_type_list')
   list.innerHTML = ''
 
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('work_type_master')
     .select('id, name, sort_order, is_active')
     .order('is_active', { ascending: false })
     .order('sort_order')
-    .order('name')
+    .order('name'), authContext)
 
   if (error || !data) {
     console.error('作業内容の取得に失敗しました', error)
@@ -70,7 +71,7 @@ window.addWorkType = async function() {
 
   const { error } = await supabase
     .from('work_type_master')
-    .insert({ name, sort_order: sortOrder, is_active: true })
+    .insert({ name, sort_order: sortOrder, is_active: true, ...getCompanyInsertFields(authContext) })
 
   if (error) {
     console.error('作業内容の追加に失敗しました', error)
@@ -93,10 +94,10 @@ async function editWorkType(type) {
 
   const sortOrder = parseInt(sortOrderText) || 100
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('work_type_master')
     .update({ name: name.trim(), sort_order: sortOrder })
-    .eq('id', type.id)
+    .eq('id', type.id), authContext)
 
   if (error) {
     console.error('作業内容の更新に失敗しました', error)
@@ -113,10 +114,10 @@ async function toggleWorkTypeVisibility(type) {
   const action = isActive ? '非表示' : '再表示'
   if (!confirm(`この作業内容を${action}にしますか？\n\n過去の工数データは残ります。`)) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('work_type_master')
     .update({ is_active: !isActive })
-    .eq('id', type.id)
+    .eq('id', type.id), authContext)
 
   if (error) {
     console.error(`作業内容の${action}に失敗しました`, error)

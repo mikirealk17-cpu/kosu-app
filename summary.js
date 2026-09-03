@@ -1,8 +1,9 @@
 import { supabase } from './supabaseClient.js'
 import { requireAuth, ROLES } from './auth.js'
 import { getRateTypeLabel, isContractRate } from './rate-utils.js'
+import { scopeCompanyQuery } from './company-context.mjs'
 
-const authContext = await requireAuth([ROLES.ADMIN, ROLES.WORKER])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN, ROLES.WORKER])
 const BILLING_COMPANY_CSV_ENABLED = false
 
 let currentTab = 'seiban'
@@ -64,7 +65,7 @@ window.loadData = async function() {
 
   const filters = getFilters()
 
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('work_logs')
     .select(`
       actual_minutes,
@@ -83,7 +84,7 @@ window.loadData = async function() {
     `)
     .gte('work_date', from)
     .lte('work_date', to)
-    .order('work_date')
+    .order('work_date'), authContext)
 
   query = applyFilters(query, filters)
 
@@ -224,9 +225,9 @@ function applyFilters(query, filters) {
 }
 
 async function loadWorkerNameMap() {
-  const { data } = await supabase
+  const { data } = await scopeCompanyQuery(supabase
     .from('worker_master')
-    .select('id, name')
+    .select('id, name'), authContext)
 
   workerNameMap = {}
   if (!data) return
@@ -237,9 +238,9 @@ async function loadWorkerNameMap() {
 }
 
 async function loadBillingCompanyNameMap() {
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('billing_company_master')
-    .select('id, name')
+    .select('id, name'), authContext)
 
   if (error || !data) {
     throw error || new Error('元請け一覧の取得に失敗しました')
@@ -260,11 +261,11 @@ async function loadFilterOptions() {
 }
 
 async function loadWorkerOptions() {
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('worker_master')
     .select('id, name')
     .eq('is_active', true)
-    .order('sort_order')
+    .order('sort_order'), authContext)
 
   if (authContext.isWorker) {
     query = query.eq('id', authContext.profile.worker_id)
@@ -301,11 +302,11 @@ async function loadWorkerOptions() {
 }
 
 async function loadWorkTypeOptions() {
-  const { data } = await supabase
+  const { data } = await scopeCompanyQuery(supabase
     .from('work_type_master')
     .select('id, name')
     .eq('is_active', true)
-    .order('sort_order')
+    .order('sort_order'), authContext)
 
   const select = document.getElementById('filter_work_type')
   select.innerHTML = '<option value="">全作業内容</option>'
@@ -335,18 +336,18 @@ async function loadSeibanOptions() {
 }
 
 async function fetchActiveSeibans() {
-  const result = await supabase
+  const result = await scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, equipment_name, is_active')
     .eq('is_active', true)
-    .order('seiban')
+    .order('seiban'), authContext)
 
   if (!isMissingSeibanActiveColumn(result.error)) return result
 
-  return supabase
+  return scopeCompanyQuery(supabase
     .from('seiban_master')
     .select('id, seiban, equipment_name')
-    .order('seiban')
+    .order('seiban'), authContext)
 }
 
 function isMissingSeibanActiveColumn(error) {
@@ -408,7 +409,7 @@ async function fetchSummaryRows() {
   const to = document.getElementById('date_to').value
   const filters = getFilters()
 
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('work_logs')
     .select(`
       work_date,
@@ -425,7 +426,7 @@ async function fetchSummaryRows() {
     `)
     .gte('work_date', from)
     .lte('work_date', to)
-    .order('work_date')
+    .order('work_date'), authContext)
 
   query = applyFilters(query, filters)
 
@@ -1032,7 +1033,7 @@ async function fetchBillingCompanyRows() {
   const to = document.getElementById('date_to').value
   const filters = getFilters()
 
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('work_logs')
     .select(`
       actual_minutes,
@@ -1050,7 +1051,7 @@ async function fetchBillingCompanyRows() {
     `)
     .gte('work_date', from)
     .lte('work_date', to)
-    .order('work_date')
+    .order('work_date'), authContext)
 
   query = applyFilters(query, filters)
 
@@ -1068,7 +1069,7 @@ async function fetchBillingInvoiceRows() {
   const to = document.getElementById('date_to').value
   const filters = getFilters()
 
-  let query = supabase
+  let query = scopeCompanyQuery(supabase
     .from('work_logs')
     .select(`
       actual_minutes,
@@ -1090,7 +1091,7 @@ async function fetchBillingInvoiceRows() {
     `)
     .gte('work_date', from)
     .lte('work_date', to)
-    .order('work_date')
+    .order('work_date'), authContext)
 
   query = applyFilters(query, filters)
 

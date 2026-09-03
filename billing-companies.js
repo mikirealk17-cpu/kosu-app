@@ -1,15 +1,16 @@
 import { supabase } from './supabaseClient.js'
 import { requireAuth, ROLES } from './auth.js'
+import { getCompanyInsertFields, scopeCompanyQuery } from './company-context.mjs'
 
-await requireAuth([ROLES.ADMIN])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN])
 
 window.loadBillingCompanies = async function() {
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('billing_company_master')
     .select('*')
     .order('is_active', { ascending: false })
     .order('sort_order')
-    .order('name')
+    .order('name'), authContext)
 
   const list = document.getElementById('billing_company_list')
   list.innerHTML = ''
@@ -91,7 +92,7 @@ window.addBillingCompany = async function() {
 
   const { error } = await supabase
     .from('billing_company_master')
-    .insert({ name, sort_order: sortOrder, is_active: true })
+    .insert({ name, sort_order: sortOrder, is_active: true, ...getCompanyInsertFields(authContext) })
 
   if (error) {
     console.error('元請けの追加に失敗しました', error)
@@ -113,10 +114,10 @@ window.editBillingCompany = async function(company) {
 
   const sortOrder = parseInt(sortOrderText) || 100
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('billing_company_master')
     .update({ name: name.trim(), sort_order: sortOrder, is_active: true })
-    .eq('id', company.id)
+    .eq('id', company.id), authContext)
 
   if (error) {
     console.error('元請けの更新に失敗しました', error)
@@ -130,10 +131,10 @@ window.editBillingCompany = async function(company) {
 window.deleteBillingCompany = async function(id, name) {
   if (!confirm(`${name} を非表示にしますか？\n\n過去の工数データは残ります。`)) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('billing_company_master')
     .update({ is_active: false })
-    .eq('id', id)
+    .eq('id', id), authContext)
 
   if (error) {
     console.error('元請けの削除に失敗しました', error)
@@ -147,10 +148,10 @@ window.deleteBillingCompany = async function(id, name) {
 window.restoreBillingCompany = async function(id, name) {
   if (!confirm(`${name} を元請け一覧に戻しますか？`)) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('billing_company_master')
     .update({ is_active: true })
-    .eq('id', id)
+    .eq('id', id), authContext)
 
   if (error) {
     console.error('元請けの復活に失敗しました', error)

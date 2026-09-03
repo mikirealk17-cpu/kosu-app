@@ -10,9 +10,19 @@ import {
   sortProductionNumberCandidatesByRecent
 } from '../production-number-utils.mjs'
 import { hasTimeOverlap } from '../time-rules.mjs'
+import {
+  EMPTY_COMPANY_ID,
+  chooseActiveCompany,
+  getCompanyInsertFields,
+  isAdminRole,
+  isMissingMultiCompanyFunctionError,
+  scopeCompanyQuery
+} from '../company-context.mjs'
 
 const files = await Promise.all([
   'app.js',
+  'admin.html',
+  'admin.js',
   'auth.js',
   'logs.js',
   'login.js',
@@ -21,6 +31,15 @@ const files = await Promise.all([
   'time-rules.mjs',
   'summary.js',
   'seibans.js',
+  'companies.html',
+  'companies.js',
+  'company-users.html',
+  'company-users.js',
+  'company-context.mjs',
+  'rates.js',
+  'workers.js',
+  'work-types.js',
+  'billing-companies.js',
   'index.html',
   'logs.html',
   'style.css',
@@ -33,7 +52,12 @@ const files = await Promise.all([
   'SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql',
   'SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP.sql',
   'SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN.sql',
-  'SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'
+  'SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md',
+  'SUPABASE_MULTI_COMPANY_CONFIRM_ONLY.sql',
+  'SUPABASE_MULTI_COMPANY_BACKFILL_TEMPLATE.sql',
+  'supabase/migrations/202608180001_multi_company_prepare.sql',
+  'supabase/migrations/202608180002_multi_company_enforce.sql',
+  'supabase/functions/invite-company-user/index.ts'
 ].map(async path => [path, await readFile(new URL(`../${path}`, import.meta.url), 'utf8')]))
 
 const source = Object.fromEntries(files)
@@ -73,8 +97,9 @@ assert.match(source['logs.js'], /status: authContext\.isWorker \? 'pending' : 'c
 assert.match(source['seibans.js'], /merge_pending_seiban/)
 assert.match(source['seibans.js'], /status: 'confirmed',[\s\S]*confirmed_by: authContext\.session\.user\.id[\s\S]*confirmed_at: new Date\(\)\.toISOString\(\)/)
 assert.match(source['auth.js'], /const WORKER_BLOCKED_HREFS = \[/)
+assert.match(source['auth.js'], /WORKER_BLOCKED_HREFS = \[[\s\S]*?'companies\.html'[\s\S]*?'company-users\.html'[\s\S]*?\]/)
 assert.doesNotMatch(source['auth.js'], /WORKER_BLOCKED_HREFS = \[[\s\S]*?'summary\.html'[\s\S]*?\]/)
-assert.match(source['summary.js'], /requireAuth\(\[ROLES\.ADMIN, ROLES\.WORKER\]\)/)
+assert.match(source['summary.js'], /requireAuth\(\[ROLES\.ADMIN, ROLES\.COMPANY_ADMIN, ROLES\.WORKER\]\)/)
 assert.match(source['summary.js'], /authContext\.isWorker[\s\S]*authContext\.profile\.worker_id/)
 assert.match(source['summary.js'], /select\.disabled = authContext\.isWorker/)
 assert.match(source['summary.js'], /applyWorkerSummaryMode/)
@@ -109,6 +134,56 @@ assert.doesNotMatch(source['SUPABASE_SEIBAN_PRODUCTION_NUMBER_CONFIRM_ONLY.sql']
 assert.match(source['SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'], /empty_key_rows/)
 assert.match(source['SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'], /SUPABASE_SEIBAN_PRODUCTION_NUMBER_SETUP\.sql/)
 assert.match(source['SEIBAN_PRODUCTION_NUMBER_DB_RUNBOOK.md'], /SUPABASE_SEIBAN_PRODUCTION_NUMBER_RLS_HARDEN\.sql/)
+assert.match(source['auth.js'], /COMPANY_ADMIN: 'company_admin'/)
+assert.match(source['auth.js'], /multi_company_ready/)
+assert.match(source['auth.js'], /この会社は現在利用できません/)
+assert.match(source['auth.js'], /ACTIVE_COMPANY_STORAGE_KEY/)
+assert.match(source['admin.html'], /href="companies\.html"/)
+assert.match(source['admin.html'], /href="company-users\.html"/)
+assert.match(source['companies.js'], /requireAuth\(\[ROLES\.ADMIN\]\)/)
+assert.match(source['company-users.js'], /requireAuth\(\[ROLES\.ADMIN, ROLES\.COMPANY_ADMIN\]\)/)
+assert.match(source['company-users.js'], /functions\.invoke\('invite-company-user'/)
+assert.match(source['company-users.js'], /scopeCompanyQuery/)
+assert.match(source['app.js'], /getCompanyInsertFields\(authContext\)/)
+assert.match(source['logs.js'], /getCompanyInsertFields\(authContext\)/)
+for (const path of ['admin.js', 'app.js', 'logs.js', 'rates.js', 'seibans.js', 'summary.js', 'workers.js', 'work-types.js', 'billing-companies.js']) {
+  assert.match(source[path] || await readFile(new URL(`../${path}`, import.meta.url), 'utf8'), /scopeCompanyQuery/)
+}
+for (const path of ['rates.js', 'seibans.js', 'workers.js', 'work-types.js', 'billing-companies.js']) {
+  assert.match(source[path], /scopeCompanyQuery\(supabase[\s\S]*?\.update\([\s\S]*?authContext\)/)
+}
+assert.match(source['logs.js'], /scopeCompanyQuery\(supabase[\s\S]*?\.delete\(\)[\s\S]*?authContext\)/)
+assert.match(source['logs.js'], /scopeCompanyQuery\(supabase[\s\S]*?\.update\(updateData\)[\s\S]*?authContext\)/)
+assert.match(source['companies.js'], /try \{[\s\S]*finally \{[\s\S]*setSaving\(false\)/)
+assert.match(source['supabase/migrations/202608180001_multi_company_prepare.sql'], /multi_company_enabled.*false/is)
+assert.match(source['supabase/migrations/202608180001_multi_company_prepare.sql'], /multi_company_ready/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /company_id backfill is incomplete/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /cross-company work log reference exists/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /validate_work_log_company/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /company\.is_active = true/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /status = 'pending' and created_by = \(select auth\.uid\(\)\)/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /grant select on public\.user_profiles to authenticated/i)
+assert.doesNotMatch(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /create policy profile_(insert|update)/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /target must belong to the same company/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /update public\.rate_master set seiban_id = target_id/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /user_profiles_auth_user_id_idx/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /revoke all on public\.company_master[\s\S]*from authenticated/i)
+assert.match(source['supabase/migrations/202608180002_multi_company_enforce.sql'], /multi_company_enabled';\n[\s\S]*commit;/i)
+assert.doesNotMatch(source['SUPABASE_MULTI_COMPANY_CONFIRM_ONLY.sql'], /\b(update|delete|insert|alter|create|drop)\b/i)
+assert.match(source['SUPABASE_MULTI_COMPANY_CONFIRM_ONLY.sql'], /active_profile_count/i)
+assert.match(source['SUPABASE_MULTI_COMPANY_CONFIRM_ONLY.sql'], /rate_type/i)
+assert.match(source['SUPABASE_MULTI_COMPANY_BACKFILL_TEMPLATE.sql'], /target_company_id uuid := null/)
+assert.match(source['SUPABASE_MULTI_COMPANY_BACKFILL_TEMPLATE.sql'], /Cross-company references remain/)
+assert.match(source['SUPABASE_MULTI_COMPANY_BACKFILL_TEMPLATE.sql'], /set company_id = worker\.company_id/i)
+assert.match(source['SUPABASE_MULTI_COMPANY_BACKFILL_TEMPLATE.sql'], /User profile company assignment is incomplete/i)
+assert.match(source['supabase/functions/invite-company-user/index.ts'], /SUPABASE_SERVICE_ROLE_KEY/)
+assert.match(source['supabase/functions/invite-company-user/index.ts'], /caller\.role === 'company_admin' \? 'worker'/)
+assert.match(source['supabase/functions/invite-company-user/index.ts'], /body\.companyId !== caller\.company_id/)
+assert.match(source['supabase/functions/invite-company-user/index.ts'], /auth\.admin\.deleteUser/)
+assert.match(source['supabase/functions/invite-company-user/index.ts'], /supabase-js@2\.108\.2/)
+assert.match(source['supabase/functions/invite-company-user/index.ts'], /getSafeAppOrigin/)
+assert.match(source['supabase/functions/invite-company-user/index.ts'], /deleteCreatedUser/)
+assert.match(source['supabaseClient.js'], /supabase-js@2\.108\.2/)
 
 const browserSource = Object.entries(source)
   .filter(([path]) => path.endsWith('.js'))
@@ -118,13 +193,15 @@ const browserSource = Object.entries(source)
 assert.doesNotMatch(browserSource, /service_role\s*[:=]/i)
 assert.doesNotMatch(browserSource, /sb_secret_/i)
 
-for (const htmlPath of ['index.html', 'logs.html']) {
+for (const htmlPath of ['index.html', 'logs.html', 'companies.html', 'company-users.html']) {
   const ids = [...source[htmlPath].matchAll(/\sid="([^"]+)"/g)].map(match => match[1])
   assert.equal(new Set(ids).size, ids.length, `${htmlPath} に重複したidがあります`)
 }
 
 const loginUrl = 'https://kosu-app-kappa.vercel.app/login.html'
 assert.equal(getSafeLocalRedirect('logs.html?from=login', loginUrl), 'logs.html?from=login')
+assert.equal(getSafeLocalRedirect('companies.html', loginUrl), 'companies.html')
+assert.equal(getSafeLocalRedirect('company-users.html', loginUrl), 'company-users.html')
 assert.equal(getSafeLocalRedirect('javascript:alert(1)', loginUrl), '')
 assert.equal(getSafeLocalRedirect('https://example.com/admin.html', loginUrl), '')
 assert.equal(getSafeLocalRedirect('//example.com/admin.html', loginUrl), '')
@@ -146,6 +223,22 @@ assert.equal(normalizeProductionNumber('AB－123'), 'AB-123')
 assert.equal(isSimilarProductionNumber('AB-123', 'AB123'), true)
 assert.equal(isSimilarProductionNumber('AB-123', 'AB-124'), true)
 assert.equal(isSimilarProductionNumber('AB-123', 'XY-999'), false)
+assert.equal(isAdminRole('system_admin'), true)
+assert.equal(isAdminRole('company_admin'), true)
+assert.equal(isAdminRole('worker'), false)
+assert.equal(chooseActiveCompany([{ id: 'a' }, { id: 'b' }], 'b').id, 'b')
+assert.equal(chooseActiveCompany([{ id: 'a' }], 'missing').id, 'a')
+assert.deepEqual(getCompanyInsertFields({ multiCompanyEnabled: true, companyId: 'company-a' }), { company_id: 'company-a' })
+assert.deepEqual(getCompanyInsertFields({ multiCompanyEnabled: false, companyId: 'company-a' }), {})
+assert.equal(isMissingMultiCompanyFunctionError({ code: 'PGRST202' }), true)
+assert.equal(isMissingMultiCompanyFunctionError({ code: '42883' }), true)
+assert.equal(isMissingMultiCompanyFunctionError({ code: '42501', message: 'permission denied' }), false)
+assert.equal(isMissingMultiCompanyFunctionError({ message: 'network request failed' }), false)
+const companyScopeCalls = []
+const fakeQuery = { eq(column, value) { companyScopeCalls.push([column, value]); return this } }
+scopeCompanyQuery(fakeQuery, { multiCompanyEnabled: true, companyId: 'company-a' })
+scopeCompanyQuery(fakeQuery, { multiCompanyEnabled: true, companyId: null })
+assert.deepEqual(companyScopeCalls, [['company_id', 'company-a'], ['company_id', EMPTY_COMPANY_ID]])
 assert.match(source['production-number-utils.mjs'], /rememberRecentProductionNumber/)
 assert.match(source['production-number-utils.mjs'], /sortProductionNumberCandidatesByRecent/)
 assert.match(source['production-number-utils.mjs'], /filterRecentProductionNumberCandidates/)

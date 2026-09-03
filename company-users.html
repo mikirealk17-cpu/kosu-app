@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>利用者アカウント管理</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>利用者アカウント管理</h1>
+    <nav class="page-links" aria-label="画面移動">
+      <a href="admin.html">管理画面</a>
+      <a href="workers.html">作業者管理</a>
+      <a href="companies.html" class="system-admin-only">会社管理</a>
+    </nav>
+    <p class="master-guidance">先に作業者管理で名前を登録し、その作業者へログイン案内を送ります。公開の自由登録は行いません。</p>
+    <div id="migration_message" class="migration-required" hidden></div>
+    <div class="worker-list" id="user_list"></div>
+    <div class="form-group">
+      <h2>ログイン案内を送る</h2>
+      <div class="company-form-grid">
+        <div>
+          <label for="invite_email">メールアドレス</label>
+          <input id="invite_email" type="email" autocomplete="email" maxlength="254" placeholder="name@example.com">
+        </div>
+        <div>
+          <label for="invite_role">権限</label>
+          <select id="invite_role">
+            <option value="worker">作業者</option>
+            <option value="company_admin" class="system-admin-only">会社管理者</option>
+          </select>
+        </div>
+        <div class="full-row" id="worker_select_group">
+          <label for="invite_worker">紐づける作業者</label>
+          <select id="invite_worker"><option value="">作業者を選択</option></select>
+        </div>
+        <div class="full-row">
+          <button id="invite_button" type="button">パスワード設定メールを送る</button>
+        </div>
+      </div>
+    </div>
+    <div id="message" role="status" aria-live="polite"></div>
+  </div>
+  <script src="company-users.js" type="module"></script>
+</body>
+</html>

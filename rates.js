@@ -1,8 +1,9 @@
 import { supabase } from './supabaseClient.js'
 import { requireAuth, ROLES } from './auth.js'
 import { fillRateTypeSelect, getRateTypeLabel, isContractRate } from './rate-utils.js'
+import { getCompanyInsertFields, scopeCompanyQuery } from './company-context.mjs'
 
-await requireAuth([ROLES.ADMIN])
+const authContext = await requireAuth([ROLES.ADMIN, ROLES.COMPANY_ADMIN])
 
 let billingCompanies = []
 let workers = []
@@ -17,9 +18,9 @@ async function loadMasterOptions() {
   fillRateTypeSelect(document.getElementById('new_rate_type'))
 
   const [billingRes, workerRes, seibanRes] = await Promise.all([
-    supabase.from('billing_company_master').select('id, name').eq('is_active', true).order('sort_order').order('name'),
-    supabase.from('worker_master').select('id, name').eq('is_active', true).order('sort_order').order('name'),
-    supabase.from('seiban_master').select('id, seiban, equipment_name').order('seiban')
+    scopeCompanyQuery(supabase.from('billing_company_master').select('id, name').eq('is_active', true).order('sort_order').order('name'), authContext),
+    scopeCompanyQuery(supabase.from('worker_master').select('id, name').eq('is_active', true).order('sort_order').order('name'), authContext),
+    scopeCompanyQuery(supabase.from('seiban_master').select('id, seiban, equipment_name').order('seiban'), authContext)
   ])
 
   if (billingRes.error || workerRes.error || seibanRes.error) {
@@ -41,7 +42,7 @@ async function loadMasterOptions() {
 }
 
 async function loadRateList() {
-  const { data, error } = await supabase
+  const { data, error } = await scopeCompanyQuery(supabase
     .from('rate_master')
     .select(`
       *,
@@ -50,7 +51,7 @@ async function loadRateList() {
       seiban_master (seiban, equipment_name)
     `)
     .order('is_active', { ascending: false })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }), authContext)
 
   const list = document.getElementById('rate_list')
   list.innerHTML = ''
@@ -151,7 +152,8 @@ window.addRate = async function() {
     worker_id: isContractRate(rateType) ? null : workerId,
     seiban_id: isContractRate(rateType) ? seibanId : null,
     amount,
-    is_active: true
+    is_active: true,
+    ...getCompanyInsertFields(authContext)
   }
 
   const { error } = await supabase
@@ -179,10 +181,10 @@ window.editRateAmount = async function(rate) {
     return
   }
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('rate_master')
     .update({ amount, updated_at: new Date().toISOString() })
-    .eq('id', rate.id)
+    .eq('id', rate.id), authContext)
 
   if (error) {
     console.error('単価の更新に失敗しました', error)
@@ -197,10 +199,10 @@ window.editRateAmount = async function(rate) {
 window.deleteRate = async function(id) {
   if (!confirm('この単価を非表示にしますか？\n\n過去の工数データに保存済みの単価は残ります。')) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('rate_master')
     .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq('id', id)
+    .eq('id', id), authContext)
 
   if (error) {
     console.error('単価の削除に失敗しました', error)
@@ -215,10 +217,10 @@ window.deleteRate = async function(id) {
 window.restoreRate = async function(id) {
   if (!confirm('この単価を復活しますか？\n\n同じ条件の単価がある場合は失敗します。')) return
 
-  const { error } = await supabase
+  const { error } = await scopeCompanyQuery(supabase
     .from('rate_master')
     .update({ is_active: true, updated_at: new Date().toISOString() })
-    .eq('id', id)
+    .eq('id', id), authContext)
 
   if (error) {
     console.error('単価の復活に失敗しました', error)

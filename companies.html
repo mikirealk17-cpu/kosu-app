@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会社管理</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>会社管理</h1>
+    <nav class="page-links" aria-label="画面移動">
+      <a href="admin.html">管理画面</a>
+      <a href="company-users.html">利用者アカウント</a>
+    </nav>
+    <p class="master-guidance">契約会社を管理します。利用停止にしても過去の工数データは削除されません。</p>
+    <div id="migration_message" class="migration-required" hidden></div>
+    <div class="worker-list" id="company_list"></div>
+    <div class="form-group">
+      <label for="new_company_name">新しい会社を追加</label>
+      <div class="add-form">
+        <input type="text" id="new_company_name" maxlength="100" autocomplete="organization" placeholder="会社名を入力">
+        <button id="add_company_button" type="button">追加</button>
+      </div>
+    </div>
+    <div id="message" role="status" aria-live="polite"></div>
+  </div>
+  <script src="companies.js" type="module"></script>
+</body>
+</html>
