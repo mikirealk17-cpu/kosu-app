@@ -620,6 +620,7 @@ async function saveLogOnce() {
       workDate,
       seiban,
       equipmentName,
+      workTypeName: getSelectedOptionText('work_type'),
       startTime,
       endTime,
       actualMinutes
@@ -635,7 +636,7 @@ function setSaveInProgress(inProgress) {
   button.textContent = inProgress ? '保存中...' : '保存する'
 }
 
-function createSavedLogMessage({ workDate, seiban, equipmentName, startTime, endTime, actualMinutes }) {
+function createSavedLogMessage({ workDate, seiban, equipmentName, workTypeName, startTime, endTime, actualMinutes }) {
   const worker = authContext.isWorker
     ? getSelectedOptionText('worker')
     : (workerFeatureEnabled ? getSelectedOptionText('worker') : '作業者未設定')
@@ -643,6 +644,7 @@ function createSavedLogMessage({ workDate, seiban, equipmentName, startTime, end
   return [
     `${formatDateForMessage(workDate)}　${worker || '作業者未設定'}`,
     `製番${seiban}　${equipmentName}`,
+    `作業内容　${workTypeName || '作業内容未設定'}`,
     `${startTime}〜${endTime}　実働${formatDurationForMessage(actualMinutes)}`,
     '保存しました'
   ].join('\n')
