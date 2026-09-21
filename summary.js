@@ -1175,7 +1175,7 @@ function renderSeiban(data) {
 }
 
 function renderSeibanDetail(data) {
-  let html = '<table><tr><th>日付</th><th>製番</th><th>作業者</th><th>作業内容</th><th>時間</th><th>工数</th><th>履行</th></tr>'
+  let html = '<table class="seiban-detail-table"><tr><th>日付</th><th>製番</th><th>作業者</th><th>作業内容</th><th>時間</th><th>工数</th><th>履行</th></tr>'
   let total = 0
 
   data.forEach(row => {

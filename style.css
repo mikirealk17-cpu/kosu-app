@@ -705,6 +705,20 @@ table {
   table-layout: fixed;
 }
 
+.seiban-detail-table {
+  min-width: 900px;
+}
+
+.seiban-detail-table th:nth-child(2),
+.seiban-detail-table td:nth-child(2) {
+  width: 160px;
+}
+
+.seiban-detail-table th:nth-child(7),
+.seiban-detail-table td:nth-child(7) {
+  width: 240px;
+}
+
 th,
 td {
   padding: 12px;
